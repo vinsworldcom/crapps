@@ -6,7 +6,7 @@ Author:  Michael J. Vincent
 
 DESCRIPTION
 
-Script will interface with Cisco router via SNMP or Telnet, supporting
+Script will interface with Cisco router via SNMP, Telnet or SSH supporting
 regular login or username, and perform actions. SNMP supports a get
 config, put config and a save config ("wr mem" for IOS). SNMP mode also
 supports get and clear VTY line function and a get interface list and
@@ -25,8 +25,7 @@ Password decrypt and encrypt mode is provided for Cisco passwords. Type
 encryptions. Type 5 ("enable secret") are encrypted or decrypted by
 dictionary brute force.
 
-Server mode is provided for simple service listening mode.  Default 
-execution with no options provides simple Ping.
+Default execution with no options provides simple Ping.
 
 
 DEPENDENCIES
@@ -49,8 +48,8 @@ DEPENDENCIES
     Cisco::SNMP        *
     Net::Telnet        + (required by Net::Telnet::Cisco)
     Net::Telnet::Cisco
-    Net::SSH2          + (required by Net::SSH2::Cisco)
-    Net::SSH2::Cisco   * (only on GitHub)
+    Net::SSH2          ?+ (required by Net::SSH2::Cisco)
+    Net::SSH2::Cisco   ?* (only on GitHub)
     Crypt::PasswdMD5   ? (required for MD5 -P modes)
 
     ? Modules for optional features
@@ -238,30 +237,6 @@ run the batch file as a Scheduled Task every other night (to maintain
 20 days worth of back configs) and use two simple files - 1 for IOS and 
 1 for CatOS - that contain the names/IP's of the devices to backup for 
 easy editing by those who are Perl/Batch disabled.
-
-To graph utilization, an external graphing program such as Gnuplot can 
-be used.  To do this real-time, have a look at GRIPPS:
-
-  LINK:      http://www.vinsworld.com/software/
-  OVERVIEW:  http://www.vinsworld.com/software/gripps.html
-  DOWNLOAD:  http://www.vinsworld.com/software/gripps.zip
-
-With CRAPPS.PL, Gnuplot and the GRIPPS.PL script, you can create a 
-pretty nifty real-time graphing application.
-
-For example, to graph the output utilization in bits/sec and percentage 
-of a 1G link at IfIndex 4 of router R1 with SNMP community string 
-'public' polling every 10 seconds, use the following (all on one 
-command line):
-
-  crapps -s public R1 -i 4 -W 10 -r 0 | 
-  perl -e "$|++;print\"0\n0\n\";while(<>){if($_=~/[0-9]{14}/)
-  {@p=split(/\s+/,$_);print\"$p[5]\n$p[6]\n\";}}" |
-  perl gripps.pl 2 -r 
-  -x 50 -x 50 
-  -ymin 0 -ymax 1000000000 -ymin 0 -ymax 100 
-  -T "Utilization" -T "Utilization Percentage" 
-  -Y "bits/sec" -Y "Percent Util" -X "Time (10 sec intevals)"
 
 This surely provides some ideas on writing a more CRAPPS.PL related 
 Gnuplot driver that could pull the Interface name and speed from the 

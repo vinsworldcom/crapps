@@ -11,7 +11,7 @@ $VERSION = "3.02 - 09 JUL 2015";
 
 use strict;
 use warnings;
-use Getopt::Long qw(:config no_ignore_case); #bundling
+use Getopt::Long qw(:config no_ignore_case);    #bundling
 use Pod::Usage;
 
 ##################################################
@@ -20,8 +20,8 @@ use Pod::Usage;
 use Sys::Hostname;
 use Socket qw(inet_ntoa AF_INET IPPROTO_TCP);
 
-my $AF_INET6 = eval { Socket::AF_INET6() };
-my $AF_UNSPEC = eval { Socket::AF_UNSPEC() };
+my $AF_INET6       = eval { Socket::AF_INET6() };
+my $AF_UNSPEC      = eval { Socket::AF_UNSPEC() };
 my $AI_NUMERICHOST = eval { Socket::AI_NUMERICHOST() };
 my $NI_NUMERICHOST = eval { Socket::NI_NUMERICHOST() };
 
@@ -39,25 +39,26 @@ use Net::Ping 2.31;
 use Net::Telnet::Cisco 1.10;
 my $HAVE_Net_SSH2_Cisco = 0;
 eval "use Net::SSH2::Cisco";
-if(!$@) {
-    $HAVE_Net_SSH2_Cisco = 1
+
+if ( !$@ ) {
+    $HAVE_Net_SSH2_Cisco = 1;
 }
 my $HAVE_IO_Socket_IP = 0;
 eval "use IO::Socket::IP -register";
-if(!$@) {
-    $HAVE_IO_Socket_IP = 1
+if ( !$@ ) {
+    $HAVE_IO_Socket_IP = 1;
 } else {
-    eval "use IO::Socket::INET"
+    eval "use IO::Socket::INET";
 }
 my $HAVE_Crypt_PasswdMD5 = 0;
 eval "use Crypt::PasswdMD5";
-if(!$@) {
-    $HAVE_Crypt_PasswdMD5 = 1
+if ( !$@ ) {
+    $HAVE_Crypt_PasswdMD5 = 1;
 }
 my $HAVE_Term_ReadKey = 0;
 eval "use Term::ReadKey";
-if(!$@) {
-    $HAVE_Term_ReadKey = 1
+if ( !$@ ) {
+    $HAVE_Term_ReadKey = 1;
 }
 ##################################################
 # End Additional USE
@@ -72,52 +73,56 @@ my $FORMAT       = "%-19s > ";
 # REGEX to match lines in a Cisco config that contain passwords
 my $PASSWORD5 = qr/ secret 5 \$1/;
 my $PASSWORD7 = qr/( password 7 )|(-server key 7 )|( key-string 7 )/;
-my $PROMPT    = '/(?m:^(?:[\w.\/]+\:)?[\w.-]+\s?(?:\(config[^\)]*\))?\s?[\$#>]\s?(?:\(enable\))?\s*$)/';
+my $PROMPT
+  = '/(?m:^(?:[\w.\/]+\:)?[\w.-]+\s?(?:\(config[^\)]*\))?\s?[\$#>]\s?(?:\(enable\))?\s*$)/';
 
 my %opt;
-my ($opt_help, $opt_man, $opt_versions);
+my ( $opt_help, $opt_man, $opt_versions );
 
 GetOptions(
-  '4!'                     => sub { $opt{family} = AF_INET},
-  '6!'                     => sub { $opt{family} = $AF_INET6},
-  'beep+'                  => \$opt{beep},
-  'c|command=s'            => \$opt{command},
-  'C|catos!'               => \$opt{Catos},
-  'directory|dictionary=s' => \$opt{dir},
-  'encrypt|enable:s'       => \$opt{enable},
-  'f|force!'               => \$opt{force},
-  'F|format=s'             => \$opt{format},
-  'h|header!'              => \$opt{header},
-  'i|interface:s'          => \$opt{interface},
-  'I|inventory+'           => \$opt{inventory},
-  'lines:s'                => \$opt{lines},
-  'm|metric|message|mib=s' => \$opt{metric},
-  'password:s'             => \$opt{pass},
-  'Password=s'             => \$opt{Pass},
-  'r|repeat=i'             => \$opt{repeat},
-  'R|replay=i'             => \$opt{replay},
-  'snmp|salt=s'            => \$opt{snmp},
-  'S|ssh!'                 => \$opt{ssh},
-  't|tftp:s'               => \$opt{tftp},
-  'T|terminal+'            => \$opt{term},
-  'username=s'             => \$opt{user},
-  'w|write+'               => \$opt{write},
-  'W|wait=i'               => \$opt{Wait},
-  'help!'                  => \$opt_help,
-  'man!'                   => \$opt_man,
-  'versions!'              => \$opt_versions
-) or pod2usage(-verbose => 0);
+    '4!' => sub { $opt{family} = AF_INET },
+    '6!' => sub { $opt{family} = $AF_INET6 },
+    'beep+'                  => \$opt{beep},
+    'c|command=s'            => \$opt{command},
+    'C|catos!'               => \$opt{Catos},
+    'directory|dictionary=s' => \$opt{dir},
+    'encrypt|enable:s'       => \$opt{enable},
+    'f|force!'               => \$opt{force},
+    'F|format=s'             => \$opt{format},
+    'h|header!'              => \$opt{header},
+    'i|interface:s'          => \$opt{interface},
+    'I|inventory+'           => \$opt{inventory},
+    'lines:s'                => \$opt{lines},
+    'm|metric|message|mib=s' => \$opt{metric},
+    'password:s'             => \$opt{pass},
+    'Password=s'             => \$opt{Pass},
+    'r|repeat=i'             => \$opt{repeat},
+    'R|replay=i'             => \$opt{replay},
+    'snmp|salt=s'            => \$opt{snmp},
+    'S|ssh!'                 => \$opt{ssh},
+    't|tftp:s'               => \$opt{tftp},
+    'T|terminal+'            => \$opt{term},
+    'username=s'             => \$opt{user},
+    'w|write+'               => \$opt{write},
+    'W|wait=i'               => \$opt{Wait},
+    'help!'                  => \$opt_help,
+    'man!'                   => \$opt_man,
+    'versions!'              => \$opt_versions
+) or pod2usage( -verbose => 0 );
 
-if (defined $opt_help) {
-    pod2usage(-verbose => 99, -sections => "OPTIONS/PASSWORD MODE") if defined $opt{Pass};
-    pod2usage(-verbose => 99, -sections => "OPTIONS/SNMP MODE") if defined $opt{snmp};
-    pod2usage(-verbose => 99, -sections => "OPTIONS/TELNET SSH MODE") if (defined $opt{user} or defined $opt{pass})
+if ( defined $opt_help ) {
+    pod2usage( -verbose => 99, -sections => "OPTIONS/PASSWORD MODE" )
+      if defined $opt{Pass};
+    pod2usage( -verbose => 99, -sections => "OPTIONS/SNMP MODE" )
+      if defined $opt{snmp};
+    pod2usage( -verbose => 99, -sections => "OPTIONS/TELNET SSH MODE" )
+      if ( defined $opt{user} or defined $opt{pass} );
 }
 
-pod2usage(-verbose => 1) if defined $opt_help;
-pod2usage(-verbose => 2) if defined $opt_man;
+pod2usage( -verbose => 1 ) if defined $opt_help;
+pod2usage( -verbose => 2 ) if defined $opt_man;
 
-if (defined $opt_versions) {
+if ( defined $opt_versions ) {
     print
       "\nModules, Perl, OS, Program info:\n",
       "  $0\n",
@@ -134,27 +139,21 @@ if (defined $opt_versions) {
       "    Cisco::SNMP         $Cisco::SNMP::VERSION\n",
       "    Net::Ping           $Net::Ping::VERSION\n",
       "    Net::Telnet::Cisco  $Net::Telnet::Cisco::VERSION\n";
-if ($HAVE_Net_SSH2_Cisco) {
-    print
-      "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n"
-} else {
-    print
-      "    Net::SSH2::Cisco    [NOT INSTALLED]\n"
-}
-if ($HAVE_Crypt_PasswdMD5) {
-    print
-      "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n"
-} else {
-    print
-      "    Crypt::PasswdMD5    [NOT INSTALLED]\n"
-}
-if ($HAVE_Term_ReadKey) {
-    print
-      "    Term::ReadKey       $Term::ReadKey::VERSION\n"
-} else {
-    print
-      "    Term::ReadKey       [NOT INSTALLED]\n"
-}
+    if ($HAVE_Net_SSH2_Cisco) {
+        print "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n";
+    } else {
+        print "    Net::SSH2::Cisco    [NOT INSTALLED]\n";
+    }
+    if ($HAVE_Crypt_PasswdMD5) {
+        print "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n";
+    } else {
+        print "    Crypt::PasswdMD5    [NOT INSTALLED]\n";
+    }
+    if ($HAVE_Term_ReadKey) {
+        print "    Term::ReadKey       $Term::ReadKey::VERSION\n";
+    } else {
+        print "    Term::ReadKey       [NOT INSTALLED]\n";
+    }
 ##################################################
 # End Additional USE
 ##################################################
@@ -163,7 +162,7 @@ if ($HAVE_Term_ReadKey) {
       "    Perl executable     $^X\n",
       "    OS                  $^O\n",
       "\n\n";
-    exit
+    exit;
 }
 
 ##################################################
@@ -171,45 +170,49 @@ if ($HAVE_Term_ReadKey) {
 ##################################################
 
 $opt{beep} = $opt{beep} || 0;
-if (!defined $opt{header}) {
-    $opt{header} = 1
+if ( !defined $opt{header} ) {
+    $opt{header} = 1;
 }
 
 # Password mode
-if (defined $opt{Pass}) {
-    if ((my $ret = PASSWORD_Mode()) eq $FAILED) {
-        print "$0: Password MODE Error! -> $ret\n"
-    } 
-    print "\a" if ($opt{beep} >= 1);
-    exit 0
+if ( defined $opt{Pass} ) {
+    if ( ( my $ret = PASSWORD_Mode() ) eq $FAILED ) {
+        print "$0: Password MODE Error! -> $ret\n";
+    }
+    print "\a" if ( $opt{beep} >= 1 );
+    exit 0;
 }
 
-if (!$HAVE_IO_Socket_IP and defined $opt{family} and ($opt{family} == $AF_INET6)) {
+if (    !$HAVE_IO_Socket_IP
+    and defined $opt{family}
+    and ( $opt{family} == $AF_INET6 ) ) {
     print "IO::Socket::IP required for IPv6 (-6)\n";
-    exit 1
+    exit 1;
 }
-if (!$HAVE_Net_SSH2_Cisco and defined $opt{ssh}) {
+if ( !$HAVE_Net_SSH2_Cisco and defined $opt{ssh} ) {
     print "Net::SSH2::Cisco required for SSH (-S)\n";
-    exit 1
+    exit 1;
 }
 
 # Default to IPv4 for backward compatiblity
 # THIS MAY CHANGE IN THE FUTURE!!!
-if (!defined $opt{family}) {
-    $opt{family} = AF_INET
+if ( !defined $opt{family} ) {
+    $opt{family} = AF_INET;
 }
 
 # -d directory
-if (defined $opt{dir}) {
+if ( defined $opt{dir} ) {
+
     # replace \ with / for compatibility with UNIX/Windows
     $opt{dir} =~ s/\\/\//g;
+
     # remove trailing / so we're sure it does NOT exist and we CAN put it in later
-    $opt{dir} =~ s/\/$//
+    $opt{dir} =~ s/\/$//;
 }
 
 # Make sure at least one host provided
-if (!@ARGV) {
-    pod2usage(-verbose => 0, -message => "$0: host required\n")
+if ( !@ARGV ) {
+    pod2usage( -verbose => 0, -message => "$0: host required\n" );
 }
 
 # Don't allow TELNET and SNMP options together
@@ -219,52 +222,56 @@ if (!@ARGV) {
 #    exit 1
 #}
 
-$opt{repeat} = Rr($opt{repeat});
-$opt{replay} = Rr($opt{replay});
+$opt{repeat} = Rr( $opt{repeat} );
+$opt{replay} = Rr( $opt{replay} );
 
-    sub Rr {
-        my $opt = shift;
-        if (defined $opt) {
-            if ($opt < 0) {
-                print "$0: -r or -R must be integer >= 0\n";
-                exit 1
-            } elsif ($opt == 0) {
-                return -1
-            } else {
-                return $opt
-            }
+sub Rr {
+    my $opt = shift;
+    if ( defined $opt ) {
+        if ( $opt < 0 ) {
+            print "$0: -r or -R must be integer >= 0\n";
+            exit 1;
+        } elsif ( $opt == 0 ) {
+            return -1;
         } else {
-            return 1
+            return $opt;
         }
+    } else {
+        return 1;
     }
+}
 
 $opt{Catos} = $opt{Catos} || 0;
 $opt{write} = $opt{write} || 0;
 $opt{Wait}  = $opt{Wait}  || 0;
-if (defined $opt{format}) {
+if ( defined $opt{format} ) {
+
     # Format needs some form of printf % format to accommodate $host
-    if (($opt{format} eq "") || ($opt{format} !~ /%/)) {
+    if ( ( $opt{format} eq "" ) || ( $opt{format} !~ /%/ ) ) {
+
         # %.0s = no size (sink variable, don't display)
-        $FORMAT = "%.0s" . $opt{format}
+        $FORMAT = "%.0s" . $opt{format};
     } else {
-        $FORMAT = $opt{format}
+        $FORMAT = $opt{format};
     }
 }
 
 # -c file or directory
-if (defined $opt{command}) {
+if ( defined $opt{command} ) {
+
     # replace \ with / for compatibility with UNIX/Windows
     $opt{command} =~ s/\\/\//g;
+
     # Trailing / = directory of unique files
-    $UNIQUE = 1 if ($opt{command} =~ /\/$/)
+    $UNIQUE = 1 if ( $opt{command} =~ /\/$/ );
 }
 
 # -s SNMP mode
-if (defined $opt{snmp}) {
+if ( defined $opt{snmp} ) {
     getSNMPOpts()
 # -p Telnet mode
-} elsif (defined $opt{pass}) {
-    getTelnetOpts()
+} elsif ( defined $opt{pass} ) {
+    getTelnetOpts();
 }
 
 my @hosts = getHosts();
@@ -273,7 +280,7 @@ my @hosts = getHosts();
 # START LOOPING ON HOSTS #
 ##########################
 my $run = 1;
-for my $host (0..$#hosts) {
+for my $host ( 0 .. $#hosts ) {
 
     # clear response variable to be used for subroutine returns
     my $response = "";
@@ -281,169 +288,197 @@ for my $host (0..$#hosts) {
     ########
     # SNMP #
     ########
-    if (defined $opt{snmp}) {
-        if (defined $opt{tftp}) {
+    if ( defined $opt{snmp} ) {
+        if ( defined $opt{tftp} ) {
+
             # SNMP TFTP PUT
-            if (defined $opt{command}) {
+            if ( defined $opt{command} ) {
                 my $u_file = "";
+
                 # Unique file per device or 1 file for all
                 if ($UNIQUE) {
-                    $u_file = $opt{command} . $hosts[$host]->{host} . $CMD_FILE_EXT
+                    $u_file
+                      = $opt{command} . $hosts[$host]->{host} . $CMD_FILE_EXT;
                 } else {
-                    $u_file = $opt{command}
+                    $u_file = $opt{command};
                 }
-                $response = SNMP_Config($hosts[$host], $u_file)
+                $response = SNMP_Config( $hosts[$host], $u_file );
 
-            # SNMP TFTP GET
+                # SNMP TFTP GET
             } else {
                 my $output_file = "";
-                if (defined $opt{dir}) {
-                    $output_file = $opt{dir} . "/" . $hosts[$host]->{host} . $CMD_FILE_EXT
+                if ( defined $opt{dir} ) {
+                    $output_file
+                      = $opt{dir} . "/"
+                      . $hosts[$host]->{host}
+                      . $CMD_FILE_EXT;
                 } else {
-                    $output_file = $hosts[$host]->{host} . $CMD_FILE_EXT
+                    $output_file = $hosts[$host]->{host} . $CMD_FILE_EXT;
                 }
-                $response = SNMP_Config($hosts[$host], $output_file)
+                $response = SNMP_Config( $hosts[$host], $output_file );
             }
         }
 
         # SNMP WR MEM
         # if config failed, skip write.
-        if ($opt{write} && ($response =~ $FAILED)) {
+        if ( $opt{write} && ( $response =~ $FAILED ) ) {
             printf "$0: Skipping SNMP 'wr mem' > %s\n", $hosts[$host]->{host};
-            next
+            next;
         } else {
-            if ($opt{write} && !(defined $opt{interface} || defined $opt{inventory} || defined $opt{lines})) {
-                $response = SNMP_Config($hosts[$host], undef, 1);
-                next
+            if ($opt{write}
+                && !(
+                       defined $opt{interface}
+                    || defined $opt{inventory}
+                    || defined $opt{lines}
+                )
+              ) {
+                $response = SNMP_Config( $hosts[$host], undef, 1 );
+                next;
             }
         }
 
         # SNMP Line Ops
-        if (defined $opt{lines}) {
+        if ( defined $opt{lines} ) {
+
             # Send message
-            if (defined $opt{metric}) {
-                $response = SNMP_LineMessage($hosts[$host])
-            # Line query or clear
+            if ( defined $opt{metric} ) {
+                $response = SNMP_LineMessage( $hosts[$host] );
+
+                # Line query or clear
             } else {
+
                 # Lone flag = query
-                if ($opt{lines} eq "") {
-                    $response = SNMP_LineInfo($hosts[$host])
-                # has args = determine lines and clear
+                if ( $opt{lines} eq "" ) {
+                    $response = SNMP_LineInfo( $hosts[$host] );
+
+                    # has args = determine lines and clear
                 } else {
-                    $response = SNMP_LineClear($hosts[$host])
+                    $response = SNMP_LineClear( $hosts[$host] );
                 }
             }
-            next
+            next;
         }
 
         # SNMP Interface
-        if (defined $opt{interface}) {
+        if ( defined $opt{interface} ) {
 
             # Lone flag = query
-            if ($opt{interface} eq "") {
+            if ( $opt{interface} eq "" ) {
+
                 # logging?
                 my $log = "";
-                if ($opt{write}) {
-                    $log = get_log_file($hosts[$host]->{host}, $opt{dir}, "if" . $opt{interface})
+                if ( $opt{write} ) {
+                    $log = get_log_file( $hosts[$host]->{host},
+                        $opt{dir}, "if" . $opt{interface} );
                 }
-                $response = SNMP_IntfInfo($hosts[$host], $log);
+                $response = SNMP_IntfInfo( $hosts[$host], $log );
 
-            # has args = determine what to do
+                # has args = determine what to do
             } else {
+
                 # If Wait is <0 we need to adjust to minimum sample window (1)
-                $opt{Wait} = 1 if ($opt{Wait} < 1);
+                $opt{Wait} = 1 if ( $opt{Wait} < 1 );
 
                 # admin up/down
-                if (defined $opt{command} && ((uc($opt{command}) eq "UP") || (uc($opt{command}) eq "DOWN"))) {
-                    $response = SNMP_IntfUpDown($hosts[$host])
+                if (defined $opt{command}
+                    && (   ( uc( $opt{command} ) eq "UP" )
+                        || ( uc( $opt{command} ) eq "DOWN" ) )
+                  ) {
+                    $response = SNMP_IntfUpDown( $hosts[$host] );
                 } else {
+
                     # logging?
                     my $log = "";
-                    if ($opt{write} && ($opt{interface} =~ /^[0-9]+$/)) {
-                        $log = get_log_file($hosts[$host]->{host}, $opt{dir}, "if" . $opt{interface})
+                    if ( $opt{write} && ( $opt{interface} =~ /^[0-9]+$/ ) ) {
+                        $log = get_log_file( $hosts[$host]->{host},
+                            $opt{dir}, "if" . $opt{interface} );
                     }
-                    if ($opt{interface} eq "0") {
-                        $response = SNMP_CPUUtil($hosts[$host], $log)
-                    } elsif ($opt{interface} eq "00") {
-                        $response = SNMP_MemUtil($hosts[$host], $log)
-                    } elsif ($opt{interface} =~ /^\d+$/) {
-                        $response = SNMP_IntfUtil($hosts[$host], $log)
+                    if ( $opt{interface} eq "0" ) {
+                        $response = SNMP_CPUUtil( $hosts[$host], $log );
+                    } elsif ( $opt{interface} eq "00" ) {
+                        $response = SNMP_MemUtil( $hosts[$host], $log );
+                    } elsif ( $opt{interface} =~ /^\d+$/ ) {
+                        $response = SNMP_IntfUtil( $hosts[$host], $log );
                     } else {
-                        $response = SNMP_ProxyPing($hosts[$host])
+                        $response = SNMP_ProxyPing( $hosts[$host] );
                     }
                 }
             }
-            next
+            next;
         }
 
         # SNMP Inventory
-        if (defined $opt{inventory}) {
+        if ( defined $opt{inventory} ) {
             my $log = "";
-            if ($opt{write}) {
-                $log = get_log_file($hosts[$host]->{host}, $opt{dir}, "inventory")
+            if ( $opt{write} ) {
+                $log = get_log_file( $hosts[$host]->{host},
+                    $opt{dir}, "inventory" );
             }
-            $response = SNMP_Inventory($hosts[$host], $log);
-            next
+            $response = SNMP_Inventory( $hosts[$host], $log );
+            next;
         }
 
         # SNMP Info
-        if (!defined $opt{tftp}) {
-            $response = SNMP_GetInfo($hosts[$host])
+        if ( !defined $opt{tftp} ) {
+            $response = SNMP_GetInfo( $hosts[$host] );
         }
 
-    ##########
-    # Telnet #
-    ##########
-    } elsif (defined $opt{pass}) {
+        ##########
+        # Telnet #
+        ##########
+    } elsif ( defined $opt{pass} ) {
 
         if ($UNIQUE) {
+
             # Deferred -c file read until now.  Read each file in -c (path) + $hosts[$host] + .confg
-            my $u_file = $opt{command} . $hosts[$host]->{host} . $CMD_FILE_EXT;
+            my $u_file
+              = $opt{command} . $hosts[$host]->{host} . $CMD_FILE_EXT;
             printf $FORMAT . "Reading file: $u_file ", $hosts[$host]->{host};
-            if (-e $u_file) {
-                open(my $CMDFILE, '<', $u_file);
+            if ( -e $u_file ) {
+                open( my $CMDFILE, '<', $u_file );
                 @commands = <$CMDFILE>;
                 close($CMDFILE);
-                print "$SUCCESS\n"
+                print "$SUCCESS\n";
             } else {
                 print "$FAILED\n";
-                next
+                next;
             }
         }
 
         # no commands = interactive
         # send all hosts at once - let TELNET_Mode loop
         # exit on return
-        if (!defined $opt{command}) {
-            $response = TELNET_Mode(\@hosts, \@commands);
-            last
-        # one by one, but TELNET_Mode expects host as an array due to previous comment
+        if ( !defined $opt{command} ) {
+            $response = TELNET_Mode( \@hosts, \@commands );
+            last;
+
+            # one by one, but TELNET_Mode expects host as an array due to previous comment
         } else {
             my @th;
             push @th, $hosts[$host];
-            $response = TELNET_Mode(\@th, \@commands)
+            $response = TELNET_Mode( \@th, \@commands );
         }
 
-    ########
-    # Ping #
-    ########
+        ########
+        # Ping #
+        ########
     } else {
-        if ($hosts[$host]->{family} == $AF_INET6) {
+        if ( $hosts[$host]->{family} == $AF_INET6 ) {
             print "Net::Ping does not support IPv6\n";
-            next
+            next;
         }
-        $response = PING_Mode($hosts[$host])
+        $response = PING_Mode( $hosts[$host] );
     }
 
 } continue {
     print "\n";
-    print "\a" if ($opt{beep} > 1);
+    print "\a" if ( $opt{beep} > 1 );
 
     # wait between host if provided
-    sleep $opt{Wait} unless ($run++ == @hosts)
+    sleep $opt{Wait} unless ( $run++ == @hosts );
 }
 
-print "\a" if ($opt{beep} == 1);
+print "\a" if ( $opt{beep} == 1 );
 exit 0;
 
 ##################################################
@@ -454,107 +489,138 @@ exit 0;
 # Begin Subroutines
 ##################################################
 sub getSNMPOpts {
+
     # CATOS and WRITE not allowed for SNMP mode
-    if (($opt{Catos}) && ($opt{write})) {
+    if ( ( $opt{Catos} ) && ( $opt{write} ) ) {
         print "$0: WR MEM not allowed with CatOS in SNMP mode\n";
-        exit 1
+        exit 1;
     }
 
     # TFTP: keep or assign localhost
-    if (defined $opt{tftp}) {
-        if ($opt{tftp} eq "") {
-            $opt{tftp} = hostname
-        }            
-        if (defined(my $r = Cisco::SNMP::_resolv($opt{tftp}, $opt{family}))) {
-            $opt{tftp} = $r
+    if ( defined $opt{tftp} ) {
+        if ( $opt{tftp} eq "" ) {
+            $opt{tftp} = hostname;
+        }
+        if (defined(
+                my $r = Cisco::SNMP::_resolv( $opt{tftp}, $opt{family} )
+            )
+          ) {
+            $opt{tftp} = $r;
         } else {
             print Cisco::SNMP->error . "\n";
-            exit 1
+            exit 1;
         }
+
         # startup-config / running-config
-        if (defined $opt{metric}) {
-            if (($opt{metric} !~ /^start(?:up)?(?:-config)?$/i) && ($opt{metric} !~ /^run(?:ning)?(?:-config)?$/i)) {
+        if ( defined $opt{metric} ) {
+            if (   ( $opt{metric} !~ /^start(?:up)?(?:-config)?$/i )
+                && ( $opt{metric} !~ /^run(?:ning)?(?:-config)?$/i ) ) {
                 print "$0: Unknown file - $opt{metric}\n";
-                exit 1
+                exit 1;
             }
         } else {
-            $opt{metric} = 'running-config'
+            $opt{metric} = 'running-config';
         }
     }
 
     # Interface Info
-    if (defined $opt{interface} && ($opt{interface} ne "")) {
+    if ( defined $opt{interface} && ( $opt{interface} ne "" ) ) {
+
         # Admin up/down
-        if (defined $opt{command}) {
-            if ((uc($opt{command}) eq "UP") || (uc($opt{command}) eq "DOWN")) {
+        if ( defined $opt{command} ) {
+            if (   ( uc( $opt{command} ) eq "UP" )
+                || ( uc( $opt{command} ) eq "DOWN" ) ) {
+
                 # DO NOTHING (Admin up/down)
-            # Ping packet size for proxy ping
-            } elsif ($opt{command} =~ /^\d+$/) {
-                if (defined(my $r = Cisco::SNMP::_resolv($opt{interface}, $opt{family}))) {
-                    $opt{interface} = $r
+                # Ping packet size for proxy ping
+            } elsif ( $opt{command} =~ /^\d+$/ ) {
+                if (defined(
+                        my $r = Cisco::SNMP::_resolv(
+                            $opt{interface}, $opt{family}
+                        )
+                    )
+                  ) {
+                    $opt{interface} = $r;
                 } else {
                     print Cisco::SNMP->error . "\n";
-                    exit 1
+                    exit 1;
                 }
             } else {
                 print "$0: not valid command - $opt{command}\n";
-                exit 1
+                exit 1;
             }
-        # or IP address for proxy ping
-        } elsif ($opt{interface} !~ /^\d+$/) {
-            if (defined(my $r = Cisco::SNMP::_resolv($opt{interface}, $opt{family}))) {
-                $opt{interface} = $r
+
+            # or IP address for proxy ping
+        } elsif ( $opt{interface} !~ /^\d+$/ ) {
+            if (defined(
+                    my $r
+                      = Cisco::SNMP::_resolv( $opt{interface}, $opt{family} )
+                )
+              ) {
+                $opt{interface} = $r;
             } else {
                 print Cisco::SNMP->error . "\n";
-                exit 1
+                exit 1;
             }
         }
+
         # fall through
     }
 
     # default: system MIB
-    if (($opt{write} == 0) && !(defined $opt{tftp} || defined $opt{lines} || defined $opt{interface} || defined $opt{inventory})) {
-        $opt{metric} = read_mib_file()
+    if (( $opt{write} == 0 )
+        && !(
+               defined $opt{tftp}
+            || defined $opt{lines}
+            || defined $opt{interface}
+            || defined $opt{inventory}
+        )
+      ) {
+        $opt{metric} = read_mib_file();
     }
 }
 
 ##################################################
 sub getTelnetOpts {
-    if ($opt{pass} eq "") {
+    if ( $opt{pass} eq "" ) {
         print "Password: ";
-        $opt{pass} = GetPass()
+        $opt{pass} = GetPass();
     }
 
-    if (defined $opt{enable}) {
-        if ($opt{enable} eq "") {
+    if ( defined $opt{enable} ) {
+        if ( $opt{enable} eq "" ) {
             print "Enable Password: ";
-            $opt{enable} = GetPass()
+            $opt{enable} = GetPass();
         }
     }
 
     sub GetPass {
+
         # No echo password
         if ($HAVE_Term_ReadKey) { ReadMode(2) }
-        chomp(my $opt = <STDIN>);
+        chomp( my $opt = <STDIN> );
         if ($HAVE_Term_ReadKey) { ReadMode(0) }
         print "\n";
-        return $opt
+        return $opt;
     }
 
     # Telnet requires command file read to the @commands array.
     # We can only read command file now if it isn't unique per device.
-    if (!$UNIQUE) {
+    if ( !$UNIQUE ) {
+
         # -c not provided - interactive mode
-        if (!defined $opt{command}) {
+        if ( !defined $opt{command} ) {
             $commands[0] = "--STDIN--"
-        # -c file
-        } elsif (-e $opt{command}) {
-            open(my $CMDFILE, '<', $opt{command});
+
+              # -c file
+        } elsif ( -e $opt{command} ) {
+            open( my $CMDFILE, '<', $opt{command} );
             @commands = <$CMDFILE>;
             close($CMDFILE)
-        # -c command
+
+              # -c command
         } else {
-            $commands[0] = $opt{command}
+            $commands[0] = $opt{command};
         }
     }
 }
@@ -564,209 +630,237 @@ sub getHosts {
     for my $host (@ARGV) {
 
         # try to open as file first
-        if (-e $host) {
-            open(my $IN, '<', $host);
+        if ( -e $host ) {
+            open( my $IN, '<', $host );
             my @tHosts;
             while (<$IN>) {
+
                 # skip blank lines and #comments
-                next if (($_ =~ /^[\n\r]+$/) || ($_ =~ /^#/));
+                next if ( ( $_ =~ /^[\n\r]+$/ ) || ( $_ =~ /^#/ ) );
                 chomp $_;
+
                 # only get first 'arg' on each line (hostnames can't contain whitespace)
                 my ($h) = split /\s+/, $_;
+
                 # lookup host and skip if not found
-                if (defined(my $ret = Cisco::SNMP::_resolv($h, $opt{family}))) {
-                    push @tHosts, $ret
+                if (defined(
+                        my $ret = Cisco::SNMP::_resolv( $h, $opt{family} )
+                    )
+                  ) {
+                    push @tHosts, $ret;
                 } else {
                     print Cisco::SNMP->error . "\n";
-                    next
+                    next;
                 }
             }
+
             # clean up - add temp hosts to final host array
             close($IN);
             push @hosts, @tHosts
-        # not a file, push hostname to array
+
+              # not a file, push hostname to array
         } else {
+
             # lookup host and skip if not found
-            if (defined(my $ret = Cisco::SNMP::_resolv($host, $opt{family}))) {
-                push @hosts, $ret
+            if (defined(
+                    my $ret = Cisco::SNMP::_resolv( $host, $opt{family} )
+                )
+              ) {
+                push @hosts, $ret;
             } else {
                 print Cisco::SNMP->error . "\n";
-                next
+                next;
             }
         }
     }
-    return @hosts
+    return @hosts;
 }
 
 ##################################################
 sub read_mib_file {
 
-# (for /f %i in ('awk "/^[A-Za-z]/ {print $1}" \usr\share\snmp\mibs\*') 
-#  do @eecho -n "%i " && snmptranslate -mALL -IR -On %i) 2>&1 | 
+# (for /f %i in ('awk "/^[A-Za-z]/ {print $1}" \usr\share\snmp\mibs\*')
+#  do @eecho -n "%i " && snmptranslate -mALL -IR -On %i) 2>&1 |
 #  grep -v Unknown >> out.txt
 
     my %MIB;
 
-    if (!defined $opt{force}) {
+    if ( !defined $opt{force} ) {
         %MIB = (
-            '1.3.6.1.2.1.1'     => "System MIB",
-            '1.3.6.1.2.1.1.1.0' => "sysDescr",
-            '1.3.6.1.2.1.1.2.0' => "sysObjectID",
-            '1.3.6.1.2.1.1.3.0' => "sysUpTimeInstance",
-            '1.3.6.1.2.1.1.4.0' => "sysContact",
-            '1.3.6.1.2.1.1.5.0' => "sysName",
-            '1.3.6.1.2.1.1.6.0' => "sysLocation",
-            '1.3.6.1.2.1.1.7.0' => "sysServices",
-            '1.3.6.1.2.1.1.8.0' => "sysORLastChange",
+            '1.3.6.1.2.1.1'         => "System MIB",
+            '1.3.6.1.2.1.1.1.0'     => "sysDescr",
+            '1.3.6.1.2.1.1.2.0'     => "sysObjectID",
+            '1.3.6.1.2.1.1.3.0'     => "sysUpTimeInstance",
+            '1.3.6.1.2.1.1.4.0'     => "sysContact",
+            '1.3.6.1.2.1.1.5.0'     => "sysName",
+            '1.3.6.1.2.1.1.6.0'     => "sysLocation",
+            '1.3.6.1.2.1.1.7.0'     => "sysServices",
+            '1.3.6.1.2.1.1.8.0'     => "sysORLastChange",
             '1.3.6.1.6.3.1.1.4.1.0' => "snmpTrapOID"
-        )
+        );
     }
 
     # MIB file
-    if (defined $opt{metric}) {
-        if (-e $opt{metric}) {
-            open(my $IN, '<', $opt{metric});
+    if ( defined $opt{metric} ) {
+        if ( -e $opt{metric} ) {
+            open( my $IN, '<', $opt{metric} );
             while (<$IN>) {
+
                 # skip blank lines and comments (starting with #)
-                next if (($_ =~ /^[\n\r]+$/) || ($_ =~ /^#/));
+                next if ( ( $_ =~ /^[\n\r]+$/ ) || ( $_ =~ /^#/ ) );
                 chomp $_;
-                my ($o, $m) = split /\t/, $_;
-                $MIB{$o} = $m
+                my ( $o, $m ) = split /\t/, $_;
+                $MIB{$o} = $m;
             }
-            close($IN)
+            close($IN);
         } else {
-            print "$0: error reading MIB file - $opt{metric}\n"
+            print "$0: error reading MIB file - $opt{metric}\n";
         }
     }
-    return \%MIB
+    return \%MIB;
 }
 
 ##################################################
 sub getCMSession {
-    my ($t, $h) = @_;
+    my ( $t, $h ) = @_;
 
     my %params = (
         hostname => $h->{addr},
         family   => $h->{family},
     );
 
-    if ((defined $opt{user}) and (defined $opt{pass})) {
-        $params{version} = 3;
-        $params{username} = $opt{user};
+    if ( ( defined $opt{user} ) and ( defined $opt{pass} ) ) {
+        $params{version}      = 3;
+        $params{username}     = $opt{user};
         $params{authpassword} = $opt{pass};
 
-        my ($auth, $priv) = split /,/, $opt{snmp};
+        my ( $auth, $priv ) = split /,/, $opt{snmp};
         $params{authprotocol} = $auth;
 
-        if (defined $opt{enable}) {
+        if ( defined $opt{enable} ) {
             $params{privpassword} = $opt{enable};
-            if (defined $priv) {
-                $params{privprotocol} = $priv
+            if ( defined $priv ) {
+                $params{privprotocol} = $priv;
             } else {
-                $params{privprotocol} = 'des'
+                $params{privprotocol} = 'des';
             }
         }
     } else {
-        $params{community} = $opt{snmp}
+        $params{community} = $opt{snmp};
     }
 
-    my $s = ('Cisco::SNMP::' . $t)->new(
-        hostname  => $h->{addr},
-        family    => $h->{family},
+    my $s = ( 'Cisco::SNMP::' . $t )->new(
+        hostname => $h->{addr},
+        family   => $h->{family},
         %params
     );
 
-    if (!defined $s) {
+    if ( !defined $s ) {
         printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")", $h->{host};
-        return
+        return;
     }
-    return $s
+    return $s;
 }
 
 ##################################################
 sub SNMP_Config {
 
-    my ($host, $file, $COPY) = @_;
+    my ( $host, $file, $COPY ) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Config', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Config', $host ) ) ) {
+        return;
     }
 
     # wr mem
-    if (defined $COPY) {
-        printf $FORMAT . "%s/running-config > %s/startup-config ", $host->{host}, $host->{host}, $host->{host};
-        if (defined(my $conf = $session->config_copy())) {
-            print "$SUCCESS\n"
+    if ( defined $COPY ) {
+        printf $FORMAT . "%s/running-config > %s/startup-config ",
+          $host->{host}, $host->{host}, $host->{host};
+        if ( defined( my $conf = $session->config_copy() ) ) {
+            print "$SUCCESS\n";
         } else {
-            print "$FAILED (" . Cisco::SNMP->error . ")\n"
+            print "$FAILED (" . Cisco::SNMP->error . ")\n";
         }
     } else {
+
         # TFTP PUT (to device)
-        if (defined $opt{command}) {
-            printf $FORMAT . "tftp://%s/$file > %s/$opt{metric} ", $host->{host}, $opt{tftp}->{addr}, $host->{host};
+        if ( defined $opt{command} ) {
+            printf $FORMAT . "tftp://%s/$file > %s/$opt{metric} ",
+              $host->{host}, $opt{tftp}->{addr}, $host->{host};
 
             # CatOS
-            if ($opt{Catos}) {
-                if (defined(my $conf = $session->config_copy(
-                               -tftp   => $opt{tftp}->{addr},
-                               -source => $file,
-                               -dest   => $opt{metric}
-                               -catos  => 1
-                           ))) {
-                    print "$SUCCESS\n"
+            if ( $opt{Catos} ) {
+                if (defined(
+                        my $conf = $session->config_copy(
+                            -tftp   => $opt{tftp}->{addr},
+                            -source => $file,
+                            -dest   => $opt{metric} -catos => 1
+                        )
+                    )
+                  ) {
+                    print "$SUCCESS\n";
                 } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n"
+                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
                 }
 
-            # IOS
+                # IOS
             } else {
-                if (defined(my $conf = $session->config_copy(
-                               -tftp   => $opt{tftp}->{addr},
-                               -family => $opt{tftp}->{family},
-                               -source => $file,
-                               -dest   => $opt{metric}
-                           ))) {
-                    print "$SUCCESS\n"
+                if (defined(
+                        my $conf = $session->config_copy(
+                            -tftp   => $opt{tftp}->{addr},
+                            -family => $opt{tftp}->{family},
+                            -source => $file,
+                            -dest   => $opt{metric}
+                        )
+                    )
+                  ) {
+                    print "$SUCCESS\n";
                 } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n"
+                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
                 }
             }
 
-        # TFTP GET (from device)
+            # TFTP GET (from device)
         } else {
-            printf $FORMAT . "%s/$opt{metric} > tftp://%s/$file ", $host->{host}, $host->{host}, $opt{tftp}->{addr};
+            printf $FORMAT . "%s/$opt{metric} > tftp://%s/$file ",
+              $host->{host}, $host->{host}, $opt{tftp}->{addr};
 
             # CatOS
-            if ($opt{Catos}) {
-                if (defined(my $conf = $session->config_copy(
-                               -tftp   => $opt{tftp}->{addr},
-                               -source => $opt{metric},
-                               -dest   => $file,
-                               -catos  => 1
-                           ))) {
-                    print "$SUCCESS\n"
+            if ( $opt{Catos} ) {
+                if (defined(
+                        my $conf = $session->config_copy(
+                            -tftp   => $opt{tftp}->{addr},
+                            -source => $opt{metric},
+                            -dest   => $file,
+                            -catos  => 1
+                        )
+                    )
+                  ) {
+                    print "$SUCCESS\n";
                 } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n"
+                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
                 }
 
-            # IOS
+                # IOS
             } else {
-                if (defined(my $conf = $session->config_copy(
-                               -tftp   => $opt{tftp}->{addr},
-                               -family => $opt{tftp}->{family},
-                               -source => $opt{metric},
-                               -dest   => $file
-                           ))) {
-                    print "$SUCCESS\n"
+                if (defined(
+                        my $conf = $session->config_copy(
+                            -tftp   => $opt{tftp}->{addr},
+                            -family => $opt{tftp}->{family},
+                            -source => $opt{metric},
+                            -dest   => $file
+                        )
+                    )
+                  ) {
+                    print "$SUCCESS\n";
                 } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n"
+                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
                 }
             }
         }
     }
 
-    $session->close()
+    $session->close();
 }
 
 ##################################################
@@ -775,26 +869,24 @@ sub SNMP_LineMessage {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Line', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+        return;
     }
 
-    my %params = (
-        message => $opt{metric}
-    );
+    my %params = ( message => $opt{metric} );
 
-    if ($opt{lines} ne '') { 
-        $params{lines} = $opt{lines}
+    if ( $opt{lines} ne '' ) {
+        $params{lines} = $opt{lines};
     }
 
     printf $FORMAT, $host->{host};
-    if (defined(my $response = $session->line_message(%params))) {
-        print "Messaged lines = @{$response} $SUCCESS\n"
+    if ( defined( my $response = $session->line_message(%params) ) ) {
+        print "Messaged lines = @{$response} $SUCCESS\n";
     } else {
-        print "$FAILED (" . Cisco::SNMP->error . ")\n"
+        print "$FAILED (" . Cisco::SNMP->error . ")\n";
     }
 
-    $session->close()
+    $session->close();
 }
 
 ##################################################
@@ -803,40 +895,48 @@ sub SNMP_LineInfo {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Line', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+        return;
     }
 
     my $response = $session->line_numberof();
-    printf $FORMAT . "(%3s) TYPE ACT  SECS SESS\n" .
-           $FORMAT . "-------------------------\n", $host->{host}, (defined($response) ? $response : '#'), $host->{host} if ($opt{header});
+    printf $FORMAT
+      . "(%3s) TYPE ACT  SECS SESS\n"
+      . $FORMAT
+      . "-------------------------\n", $host->{host},
+      ( defined($response) ? $response : '#' ), $host->{host}
+      if ( $opt{header} );
 
-    if (defined($response = $session->line_info())) {
+    if ( defined( $response = $session->line_info() ) ) {
         my $sessions = $session->line_sessions();
-        for my $line (sort {$a <=> $b} (keys(%{$response}))) {
-            printf $FORMAT . "%5i %-5s", $host->{host}, $line, $response->lineType($line);
-            if ($response->lineActive($line) == 1) {
-                print "Y "
+        for my $line ( sort { $a <=> $b } ( keys( %{$response} ) ) ) {
+            printf $FORMAT . "%5i %-5s", $host->{host}, $line,
+              $response->lineType($line);
+            if ( $response->lineActive($line) == 1 ) {
+                print "Y ";
             } else {
-                print "N "
+                print "N ";
             }
             printf "%7i", $response->lineTimeActive($line);
-            if ($response->lineActive($line) == 1) {
-                for (0..$response->lineNses($line)-1) {
-                    printf " [%.1s]%s://%s%s", 
-                        $sessions->sessDirection($line, $_), 
-                        $sessions->sessType($line, $_), 
-                        ($response->lineUser($line) ne '') ? $response->lineUser($line) . '@' : '',
-                        $sessions->sessAddress($line, $_)
+            if ( $response->lineActive($line) == 1 ) {
+                for ( 0 .. $response->lineNses($line) - 1 ) {
+                    printf " [%.1s]%s://%s%s",
+                      $sessions->sessDirection( $line, $_ ),
+                      $sessions->sessType( $line, $_ ),
+                      ( $response->lineUser($line) ne '' )
+                      ? $response->lineUser($line) . '@'
+                      : '',
+                      $sessions->sessAddress( $line, $_ );
                 }
             }
-            print "\n"
+            print "\n";
         }
     } else {
-        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n", $host->{host}
+        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n",
+          $host->{host};
     }
 
-    $session->close()
+    $session->close();
 }
 
 ##################################################
@@ -845,121 +945,127 @@ sub SNMP_LineClear {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Line', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+        return;
     }
 
     printf $FORMAT, $host->{host};
-    if (defined(my $response = $session->line_clear($opt{lines}))) {        
-        print "Cleared lines = @{$response} $SUCCESS\n"
+    if ( defined( my $response = $session->line_clear( $opt{lines} ) ) ) {
+        print "Cleared lines = @{$response} $SUCCESS\n";
     } else {
-        print "$FAILED (" . Cisco::SNMP->error . ")\n"
+        print "$FAILED (" . Cisco::SNMP->error . ")\n";
     }
 
-    $session->close()
+    $session->close();
 }
 
 ##################################################
 sub SNMP_IntfInfo {
 
-    my ($host, $log) = @_;
+    my ( $host, $log ) = @_;
 
     my $sessip;
     my $sessif;
-    if (!defined($sessif = getCMSession('Interface', $host))) {
-        return
+    if ( !defined( $sessif = getCMSession( 'Interface', $host ) ) ) {
+        return;
     }
-    if (!defined($sessip = getCMSession('IP', $host))) {
-        return
+    if ( !defined( $sessip = getCMSession( 'IP', $host ) ) ) {
+        return;
     }
 
     my @mets;
-    if (defined $opt{metric}) {
-        @mets = split /,/, $opt{metric}
+    if ( defined $opt{metric} ) {
+        @mets = split /,/, $opt{metric};
     } else {
-        push @mets, "Index", "Description", "AdminStatus", "OperStatus"
+        push @mets, "Index", "Description", "AdminStatus", "OperStatus";
     }
 
-    my (%OIDS, %ifOIDS, %ipOIDS);
-    $ifOIDS{lc($_)} = $_ for ($sessif->ifOIDs());
-    $ipOIDS{lc($_)} = $_ for ($sessip->addrOIDs());
-    %OIDS = (%ifOIDS, %ipOIDS);
+    my ( %OIDS, %ifOIDS, %ipOIDS );
+    $ifOIDS{lc($_)} = $_ for ( $sessif->ifOIDs() );
+    $ipOIDS{lc($_)} = $_ for ( $sessip->addrOIDs() );
+    %OIDS = ( %ifOIDS, %ipOIDS );
 
-    if (!defined(my $r = verifyMetrics(\@mets, \%OIDS))) {
-        return
+    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+        return;
     }
 
     my $OUT;
-    if ($log ne "") {
-        $OUT = open_log_file_keys($log, \@mets, \%OIDS)
+    if ( $log ne "" ) {
+        $OUT = open_log_file_keys( $log, \@mets, \%OIDS );
     }
 
     # header
-    if ($opt{header}) {
+    if ( $opt{header} ) {
         printf $FORMAT, $host->{host};
         for (@mets) {
-            if ($_ =~ /^(?:if)?index$/) {
-                printf "%-6s", $OIDS{$_}
-            } elsif ($_ eq "description") {
-                printf "%-20s", $OIDS{$_}
-            } elsif (exists $ipOIDS{$_}) {
-                printf "%-16s", $OIDS{$_}
+            if ( $_ =~ /^(?:if)?index$/ ) {
+                printf "%-6s", $OIDS{$_};
+            } elsif ( $_ eq "description" ) {
+                printf "%-20s", $OIDS{$_};
+            } elsif ( exists $ipOIDS{$_} ) {
+                printf "%-16s", $OIDS{$_};
             } else {
-                printf "%-12s", $OIDS{$_}
+                printf "%-12s", $OIDS{$_};
             }
         }
         printf "\n" . $FORMAT, $host->{host};
         for (@mets) {
-            if ($_ =~ /^(?:if)?index$/) {
-                print "-"x6
-            } elsif ($_ eq "description") {
-                print "-"x20
-            } elsif (exists $ipOIDS{$_}) {
-                print "-"x16
+            if ( $_ =~ /^(?:if)?index$/ ) {
+                print "-" x 6;
+            } elsif ( $_ eq "description" ) {
+                print "-" x 20;
+            } elsif ( exists $ipOIDS{$_} ) {
+                print "-" x 16;
             } else {
-                print "-"x12
+                print "-" x 12;
             }
         }
-        print "\n"
+        print "\n";
     }
 
-    if (defined(my $response = $sessif->interface_info())) {
+    if ( defined( my $response = $sessif->interface_info() ) ) {
         my $ips = $sessip->addr_info();
-        for my $int (sort {$a <=> $b} (keys(%{$response}))) {
+        for my $int ( sort { $a <=> $b } ( keys( %{$response} ) ) ) {
             printf $FORMAT, $host->{host};
             printf $OUT "%s\t", $host->{host} if ($OUT);
             for my $m (@mets) {
-                if ($m =~ /^(?:if)?index$/) {
+                if ( $m =~ /^(?:if)?index$/ ) {
                     printf "%-6i", $response->{$int}->{$OIDS{$m}};
-                    printf $OUT "%i\t", $response->{$int}->{$OIDS{$m}} if ($OUT)
-                } elsif ($m eq "description") {
+                    printf $OUT "%i\t", $response->{$int}->{$OIDS{$m}}
+                      if ($OUT);
+                } elsif ( $m eq "description" ) {
                     printf "%-20s", $response->{$int}->{$OIDS{$m}};
-                    printf $OUT "%s\t", $response->{$int}->{$OIDS{$m}} if ($OUT)
-                } elsif (exists $ipOIDS{$m}) {
-                    if (exists($ips->{$int})) {
-                        for (0..$#{$ips->{$int}}) {
+                    printf $OUT "%s\t", $response->{$int}->{$OIDS{$m}}
+                      if ($OUT);
+                } elsif ( exists $ipOIDS{$m} ) {
+                    if ( exists( $ips->{$int} ) ) {
+                        for ( 0 .. $#{$ips->{$int}} ) {
                             printf "%-16s", $ips->{$int}->[$_]->{$OIDS{$m}};
-                            printf $OUT "%s\t", $ips->{$int}->[$_]->{$OIDS{$m}} if ($OUT)
+                            printf $OUT "%s\t",
+                              $ips->{$int}->[$_]->{$OIDS{$m}}
+                              if ($OUT);
                         }
                     } else {
                         print " " x 16;
-                        print $OUT "\t" if ($OUT)
+                        print $OUT "\t" if ($OUT);
                     }
                 } else {
                     printf "%-12s", $response->{$int}->{$OIDS{$m}};
-                    printf $OUT "%s\t", $response->{$int}->{$OIDS{$m}} if ($OUT)
+                    printf $OUT "%s\t", $response->{$int}->{$OIDS{$m}}
+                      if ($OUT);
                 }
             }
             print "\n";
-            print $OUT "\n" if ($OUT)
+            print $OUT "\n" if ($OUT);
         }
     } else {
-        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n", $host->{host}
+        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n",
+          $host->{host};
     }
 
     close($OUT) if ($OUT);
     $sessif->close();
-    $sessip->close()
+    $sessip->close();
 }
 
 ##################################################
@@ -968,87 +1074,90 @@ sub SNMP_IntfUpDown {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Interface', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Interface', $host ) ) ) {
+        return;
     }
 
     printf $FORMAT, $host->{host};
-    if (defined(my $response = $session->interface_updown(
-                   interface => $opt{interface},
-                   operation => $opt{command}
-               ))) {
-        $opt{command} = uc($opt{command});
-        print "Admin $opt{command} interfaces = @{$response} $SUCCESS\n"
+    if (defined(
+            my $response = $session->interface_updown(
+                interface => $opt{interface},
+                operation => $opt{command}
+            )
+        )
+      ) {
+        $opt{command} = uc( $opt{command} );
+        print "Admin $opt{command} interfaces = @{$response} $SUCCESS\n";
     } else {
-        print "$FAILED (" . Cisco::SNMP->error . ")\n"
+        print "$FAILED (" . Cisco::SNMP->error . ")\n";
     }
 
-    $session->close()
+    $session->close();
 }
 
 ##################################################
 sub SNMP_CPUUtil {
 
-    my ($host, $log) = @_;
+    my ( $host, $log ) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('CPU', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'CPU', $host ) ) ) {
+        return;
     }
 
     my $response;
-    if (!defined($response = $session->cpu_info())) {        
-        return $FAILED . " (" . Cisco::SNMP->error . ")"
+    if ( !defined( $response = $session->cpu_info() ) ) {
+        return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
 
     # outfile if requested
     my $OUT;
-    if ($log ne "") {
-        if (defined($OUT = open_log_file($log))) {
-            if (defined $response->cpuName(0)) {
+    if ( $log ne "" ) {
+        if ( defined( $OUT = open_log_file($log) ) ) {
+            if ( defined $response->cpuName(0) ) {
                 print $OUT "CPU Name:\t";
-                for (0..$#{$response}) {
-                    printf $OUT "%s\t\t\t", $response->cpuName($_)
+                for ( 0 .. $#{$response} ) {
+                    printf $OUT "%s\t\t\t", $response->cpuName($_);
                 }
                 print $OUT "\nTimestamp";
-                for (0..$#{$response}) {
-                    print $OUT "\t5s%\t1m%\t5m%"
+                for ( 0 .. $#{$response} ) {
+                    print $OUT "\t5s%\t1m%\t5m%";
                 }
-                print $OUT "\n"
+                print $OUT "\n";
             } else {
-                print $OUT "Timestamp\t5s%\t1m%\t5m%\n"
+                print $OUT "Timestamp\t5s%\t1m%\t5m%\n";
             }
         }
     }
 
     # header
-    if ($opt{header}) {
+    if ( $opt{header} ) {
         printf $FORMAT . "CPU Utilization\n", $host->{host};
-        if (defined $response->cpuName(0)) {
+        if ( defined $response->cpuName(0) ) {
             printf $FORMAT . "CPU Name:      ", $host->{host};
-            for (0..$#{$response}) {
-                printf "%-11s ", $response->cpuName($_)
+            for ( 0 .. $#{$response} ) {
+                printf "%-11s ", $response->cpuName($_);
             }
-            print "\n"
+            print "\n";
         }
         printf $FORMAT . "Timestamp      5s%% 1m%% 5m%%", $host->{host};
-        if (defined $response->cpuName(0)) {
-            for (0..($#{$response} - 1)) {
-                print " 5s% 1m% 5m%"
+        if ( defined $response->cpuName(0) ) {
+            for ( 0 .. ( $#{$response} - 1 ) ) {
+                print " 5s% 1m% 5m%";
             }
         }
-        printf "\n" . $FORMAT . "-"x56 . "\n", $host->{host}
+        printf "\n" . $FORMAT . "-" x 56 . "\n", $host->{host};
     }
 
     # Ctrl-C handler to stop replay/repeat
     my $stopRepeat = 0;
     $SIG{INT} = sub {
         print "SIGINT! - Stop\n";
-        $stopRepeat = 1
+        $stopRepeat = 1;
     };
 
     my $j = 0;
-    while ($j != $opt{repeat}) {
+    while ( $j != $opt{repeat} ) {
 
         # Wait sample interval
         sleep $opt{Wait};
@@ -1056,87 +1165,104 @@ sub SNMP_CPUUtil {
         # CTRL-C?
         last if ($stopRepeat);
 
-        if (defined($response = $session->cpu_info())) {
+        if ( defined( $response = $session->cpu_info() ) ) {
             printf $FORMAT . "%s", $host->{host}, yyyymmddhhmmss();
             printf $OUT "%s", yyyymmddhhmmss() if ($OUT);
-            for (0..$#{$response}) {
-                printf      " %3i %3i %3i", (defined($response->cpu5sec($_)) ? $response->cpu5sec($_) : 0) , (defined($response->cpu1min($_)) ? $response->cpu1min($_) : 0), $response->cpu5min($_);
-                printf $OUT "\t%i\t%i\t%i", (defined($response->cpu5sec($_)) ? $response->cpu5sec($_) : 0) , (defined($response->cpu1min($_)) ? $response->cpu1min($_) : 0), $response->cpu5min($_) if ($OUT)
+            for ( 0 .. $#{$response} ) {
+                printf " %3i %3i %3i",
+                  ( defined( $response->cpu5sec($_) ) ? $response->cpu5sec($_)
+                    : 0
+                  ),
+                  ( defined( $response->cpu1min($_) ) ? $response->cpu1min($_)
+                    : 0
+                  ),
+                  $response->cpu5min($_);
+                printf $OUT "\t%i\t%i\t%i",
+                  ( defined( $response->cpu5sec($_) ) ? $response->cpu5sec($_)
+                    : 0
+                  ),
+                  ( defined( $response->cpu1min($_) ) ? $response->cpu1min($_)
+                    : 0
+                  ),
+                  $response->cpu5min($_)
+                  if ($OUT);
             }
             print "\n";
             print $OUT "\n" if ($OUT);
-            $j++
+            $j++;
         } else {
-            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(), Cisco::SNMP->error;
-            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error if ($OUT)
+            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(),
+              Cisco::SNMP->error;
+            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error
+              if ($OUT);
         }
     }
 
     close($OUT) if ($OUT);
-    $session->close()
+    $session->close();
 }
 
 ##################################################
 sub SNMP_MemUtil {
 
-    my ($host, $log) = @_;
+    my ( $host, $log ) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Memory', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Memory', $host ) ) ) {
+        return;
     }
 
     my $response;
-    if (!defined($response = $session->memory_info())) {        
-        return $FAILED . " (" . Cisco::SNMP->error . ")"
+    if ( !defined( $response = $session->memory_info() ) ) {
+        return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
 
     # outfile if requested
     my $OUT;
-    if ($log ne "") {
-        if (defined($OUT = open_log_file($log))) {
+    if ( $log ne "" ) {
+        if ( defined( $OUT = open_log_file($log) ) ) {
             print $OUT "Mem Pool Name:\t";
-            for (0..$#{$response}) {
-                printf $OUT "%s\t\t", $response->memName($_)
+            for ( 0 .. $#{$response} ) {
+                printf $OUT "%s\t\t", $response->memName($_);
             }
             print $OUT "\nTotal:\t";
-            for (0..$#{$response}) {
-                printf $OUT "%i K\t\t", $response->memTotal($_)/1000
+            for ( 0 .. $#{$response} ) {
+                printf $OUT "%i K\t\t", $response->memTotal($_) / 1000;
             }
             print $OUT "\nTimestamp\t";
-            for (0..$#{$response}) {
-                print $OUT "Used(K)\tUsed(%)\t"
+            for ( 0 .. $#{$response} ) {
+                print $OUT "Used(K)\tUsed(%)\t";
             }
-            print $OUT "\n"
+            print $OUT "\n";
         }
     }
 
     # header
-    if ($opt{header}) {
+    if ( $opt{header} ) {
         printf $FORMAT . "Mem Pool Name: ", $host->{host}, $host->{host};
-        for (0..$#{$response}) {
-            printf "%-12s ", $response->memName($_)
+        for ( 0 .. $#{$response} ) {
+            printf "%-12s ", $response->memName($_);
         }
         printf "\n" . $FORMAT . "Total:         ", $host->{host};
-        for (0..$#{$response}) {
-            printf "%8i K   ", $response->memTotal($_)/1000
+        for ( 0 .. $#{$response} ) {
+            printf "%8i K   ", $response->memTotal($_) / 1000;
         }
         printf "\n" . $FORMAT . "Timestamp      Used(K)    %%", $host->{host};
-        for (0..($#{$response} - 1)) {
-            print " Used(K)    %"
+        for ( 0 .. ( $#{$response} - 1 ) ) {
+            print " Used(K)    %";
         }
-        printf "\n" . $FORMAT . "-"x56 . "\n", $host->{host}
+        printf "\n" . $FORMAT . "-" x 56 . "\n", $host->{host};
     }
 
     # Ctrl-C handler to stop replay/repeat
     my $stopRepeat = 0;
     $SIG{INT} = sub {
         print "SIGINT! - Stop\n";
-        $stopRepeat = 1
+        $stopRepeat = 1;
     };
 
     my $j = 0;
-    while ($j != $opt{repeat}) {
+    while ( $j != $opt{repeat} ) {
 
         # Wait sample interval
         sleep $opt{Wait};
@@ -1144,100 +1270,111 @@ sub SNMP_MemUtil {
         # CTRL-C?
         last if ($stopRepeat);
 
-        if (defined($response = $session->memory_info())) {
+        if ( defined( $response = $session->memory_info() ) ) {
             printf $FORMAT . "%s", $host->{host}, yyyymmddhhmmss();
             printf $OUT "%s", yyyymmddhhmmss() if ($OUT);
-            for (0..$#{$response}) {
-                printf      " %7i %4.1f",  ($response->memUsed($_) / 1000), ((($response->memUsed($_))/$response->memTotal($_)) * 100);
-                printf $OUT "\t%i\t%1.1f", ($response->memUsed($_) / 1000), ((($response->memUsed($_))/$response->memTotal($_)) * 100) if ($OUT)
+            for ( 0 .. $#{$response} ) {
+                printf " %7i %4.1f", ( $response->memUsed($_) / 1000 ),
+                  ( ( ( $response->memUsed($_) ) / $response->memTotal($_) )
+                    * 100 );
+                printf $OUT "\t%i\t%1.1f", ( $response->memUsed($_) / 1000 ),
+                  ( ( ( $response->memUsed($_) ) / $response->memTotal($_) )
+                    * 100 )
+                  if ($OUT);
             }
             print "\n";
             print $OUT "\n" if ($OUT);
-            $j++
+            $j++;
         } else {
-            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(), Cisco::SNMP->error;
-            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error if ($OUT)
+            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(),
+              Cisco::SNMP->error;
+            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error
+              if ($OUT);
         }
     }
 
     close($OUT) if ($OUT);
-    $session->close()
+    $session->close();
 }
 
 ##################################################
 sub SNMP_IntfUtil {
 
-    my ($host, $log) = @_;
+    my ( $host, $log ) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Interface', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Interface', $host ) ) ) {
+        return;
     }
 
     my @mets;
-    if (defined $opt{metric}) {
-        @mets = split /,/, $opt{metric}
+    if ( defined $opt{metric} ) {
+        @mets = split /,/, $opt{metric};
     } else {
-        $mets[0] = "Octets"
+        $mets[0] = "Octets";
     }
     my %OIDS;
-    $OIDS{lc($_)} = $_ for ($session->ifMetricUserOIDs);
+    $OIDS{lc($_)} = $_ for ( $session->ifMetricUserOIDs );
 
-    if (!defined(my $r = verifyMetrics(\@mets, \%OIDS))) {
-        return
+    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+        return;
     }
-    
+
     my $response;
-    if (!defined($response = $session->interface_info($opt{interface}))) {
-        return $FAILED . " (" . Cisco::SNMP->error . ")"
+    if ( !defined( $response = $session->interface_info( $opt{interface} ) ) )
+    {
+        return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
-    my $ifSpeed = $response->ifSpeed($opt{interface});
+    my $ifSpeed = $response->ifSpeed( $opt{interface} );
 
     # outfile if requested
     my $OUT;
-    if ($log ne "") {
-        if (defined($OUT = open_log_file($log))) {
-            printf $OUT "%s - %s (bits/sec)\n\t", $response->ifDescription($opt{interface}), $ifSpeed;
+    if ( $log ne "" ) {
+        if ( defined( $OUT = open_log_file($log) ) ) {
+            printf $OUT "%s - %s (bits/sec)\n\t",
+              $response->ifDescription( $opt{interface} ), $ifSpeed;
             for (@mets) {
-                print $OUT $OIDS{$_} . (($_ eq 'octets') ? " (bits/sec)" : " (pkts/sec)") . "\t\t\t\t"
+                print $OUT $OIDS{$_}
+                  . ( ( $_ eq 'octets' ) ? " (bits/sec)" : " (pkts/sec)" )
+                  . "\t\t\t\t";
             }
             print $OUT "\nTimestamp";
-            for (0..$#mets) {
-                print $OUT "\tIn\tIn %\tOut\tOut %"
+            for ( 0 .. $#mets ) {
+                print $OUT "\tIn\tIn %\tOut\tOut %";
             }
-            print $OUT "\n"
+            print $OUT "\n";
         }
     }
 
     # header
-    if ($opt{header}) {
-        printf $FORMAT . "%s - %s (bits/sec)\n" .
-               $FORMAT . "               ", 
-                   $host->{host},
-                   $response->ifDescription($opt{interface}),
-                   $ifSpeed,
-                   $host->{host};
+    if ( $opt{header} ) {
+        printf $FORMAT . "%s - %s (bits/sec)\n" . $FORMAT . "               ",
+          $host->{host},
+          $response->ifDescription( $opt{interface} ),
+          $ifSpeed,
+          $host->{host};
         for (@mets) {
-            printf "%-42s", $OIDS{$_} . (($_ eq 'octets') ? " (bits/sec)" : " (pkts/sec)")
+            printf "%-42s", $OIDS{$_}
+              . ( ( $_ eq 'octets' ) ? " (bits/sec)" : " (pkts/sec)" );
         }
         print "\n";
         printf $FORMAT . "Timestamp      ", $host->{host};
-        for (0..$#mets) {
-            print "            In  In %            Out Out % "
+        for ( 0 .. $#mets ) {
+            print "            In  In %            Out Out % ";
         }
         print "\n";
         printf $FORMAT . "---------------", $host->{host};
-        for (0..$#mets) {
-            print "-"x42
+        for ( 0 .. $#mets ) {
+            print "-" x 42;
         }
-        print "\n"
+        print "\n";
     }
 
     # Ctrl-C handler to stop replay/repeat
     my $stopRepeat = 0;
     $SIG{INT} = sub {
         print "SIGINT! - Stop\n";
-        $stopRepeat = 1
+        $stopRepeat = 1;
     };
 
     my $j = 0;
@@ -1247,39 +1384,59 @@ sub SNMP_IntfUtil {
         polling   => $opt{Wait}
     );
 
-    while ($j != $opt{repeat}) {
+    while ( $j != $opt{repeat} ) {
 
         # CTRL-C?
         last if ($stopRepeat);
 
         $params{recursive} = $recur;
         $params{metrics}   = \@mets;
-        ($response, $recur) = $session->interface_utilization(%params);
-        if (defined $response) {
+        ( $response, $recur ) = $session->interface_utilization(%params);
+        if ( defined $response ) {
             printf $FORMAT . "%s", $host->{host}, yyyymmddhhmmss();
             printf $OUT "%s\t", yyyymmddhhmmss() if ($OUT);
             for my $metric (@mets) {
-                if ($metric eq 'octets') {
-                    my $inPer  = $response->{$opt{interface}}->{InOctets}  * 100 / $ifSpeed;
-                    my $outPer = $response->{$opt{interface}}->{OutOctets} * 100 / $ifSpeed;
-                    printf " %14.2f %5.2f %14.2f %5.2f", $response->{$opt{interface}}->{InOctets}, $inPer, $response->{$opt{interface}}->{OutOctets}, $outPer;
-                    printf $OUT "%1.2f\t%1.2f\t%1.2f\t%1.2f\t", $response->{$opt{interface}}->{InOctets}, $inPer, $response->{$opt{interface}}->{OutOctets}, $outPer if ($OUT)
+                if ( $metric eq 'octets' ) {
+                    my $inPer = $response->{$opt{interface}}->{InOctets} * 100
+                      / $ifSpeed;
+                    my $outPer
+                      = $response->{$opt{interface}}->{OutOctets} * 100
+                      / $ifSpeed;
+                    printf " %14.2f %5.2f %14.2f %5.2f",
+                      $response->{$opt{interface}}->{InOctets},  $inPer,
+                      $response->{$opt{interface}}->{OutOctets}, $outPer;
+                    printf $OUT "%1.2f\t%1.2f\t%1.2f\t%1.2f\t",
+                      $response->{$opt{interface}}->{InOctets},  $inPer,
+                      $response->{$opt{interface}}->{OutOctets}, $outPer
+                      if ($OUT);
                 } else {
-                    printf " %14.2f  --   %14.2f  --  ", $response->{$opt{interface}}->{'In' . $OIDS{$metric}}, ($metric eq 'unknowns') ? 0 : $response->{$opt{interface}}->{'Out' . $OIDS{$metric}};
-                    printf $OUT "%1.2f\t\t%1.2f\t\t", $response->{$opt{interface}}->{'In' . $OIDS{$metric}}, ($metric eq 'unknowns') ? 0 : $response->{$opt{interface}}->{'Out' . $OIDS{$metric}} if ($OUT)
+                    printf " %14.2f  --   %14.2f  --  ",
+                      $response->{$opt{interface}}->{'In' . $OIDS{$metric}},
+                      ( $metric eq 'unknowns' )
+                      ? 0
+                      : $response->{$opt{interface}}
+                      ->{'Out' . $OIDS{$metric}};
+                    printf $OUT "%1.2f\t\t%1.2f\t\t",
+                      $response->{$opt{interface}}->{'In' . $OIDS{$metric}},
+                      ( $metric eq 'unknowns' )
+                      ? 0
+                      : $response->{$opt{interface}}->{'Out' . $OIDS{$metric}}
+                      if ($OUT);
                 }
             }
             print "\n";
-            print $OUT "\n" if ($OUT)
+            print $OUT "\n" if ($OUT);
         } else {
-            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(), Cisco::SNMP->error;
-            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error if ($OUT)
+            printf $FORMAT . "%s %s\n", $host->{host}, yyyymmddhhmmss(),
+              Cisco::SNMP->error;
+            printf $OUT "%s\t%s\n", yyyymmddhhmmss(), Cisco::SNMP->error
+              if ($OUT);
         }
-        $j++
+        $j++;
     }
 
     close($OUT) if ($OUT);
-    $session->close()
+    $session->close();
 }
 
 ##################################################
@@ -1288,163 +1445,188 @@ sub SNMP_ProxyPing {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('ProxyPing', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'ProxyPing', $host ) ) ) {
+        return;
     }
 
     my $count = 1;
-    if (defined $opt{repeat}) {
-        if (($opt{repeat} > 0) && ($opt{repeat} < 11)) { $count = $opt{repeat} }
+    if ( defined $opt{repeat} ) {
+        if ( ( $opt{repeat} > 0 ) && ( $opt{repeat} < 11 ) ) {
+            $count = $opt{repeat};
+        }
     }
 
-    my $size  = 64;
-    if (defined $opt{command}) {
-        if ($opt{command} =~ /^\d+$/) {
-            if (($opt{command} > 0) && ($opt{command} < 65536)) { $size  = $opt{command} }
+    my $size = 64;
+    if ( defined $opt{command} ) {
+        if ( $opt{command} =~ /^\d+$/ ) {
+            if ( ( $opt{command} > 0 ) && ( $opt{command} < 65536 ) ) {
+                $size = $opt{command};
+            }
         }
     }
 
     # header
-    printf $FORMAT . "ping://$opt{interface}->{addr} ($size byte packets)\n" .
-           $FORMAT . "Timestamp      Tx Rx Av-RT(ms) Min(ms) Max(ms)\n" . 
-           $FORMAT . "----------------------------------------------\n", $host->{host}, $host->{host}, $host->{host} if ($opt{header});
+    printf $FORMAT
+      . "ping://$opt{interface}->{addr} ($size byte packets)\n"
+      . $FORMAT
+      . "Timestamp      Tx Rx Av-RT(ms) Min(ms) Max(ms)\n"
+      . $FORMAT
+      . "----------------------------------------------\n", $host->{host},
+      $host->{host}, $host->{host}
+      if ( $opt{header} );
 
     # Ctrl-C handler to stop replay/repeat
     my $stopReplay = 0;
     $SIG{INT} = sub {
         print "SIGINT! - Stop\n";
-        $stopReplay = 1
+        $stopReplay = 1;
     };
 
-    my $j = 0;
-    my $min = 10000; # use outrageous numbers so actual
-    my $max = 1;     # values will overwrite them
+    my $j        = 0;
+    my $min      = 10000;    # use outrageous numbers so actual
+    my $max      = 1;        # values will overwrite them
     my $received = 0;
-    my %params = (
+    my %params   = (
         host   => $opt{interface}->{addr},
         family => $opt{interface}->{family},
         count  => $count,
         size   => $size,
         wait   => $opt{Wait}
     );
-    if (defined $opt{metric}) {
-        $params{vrf} = $opt{metric}
+    if ( defined $opt{metric} ) {
+        $params{vrf} = $opt{metric};
     }
 
-    while ($j != $opt{replay}) {
+    while ( $j != $opt{replay} ) {
 
-        if (defined(my $pings = $session->proxy_ping(%params))) {
+        if ( defined( my $pings = $session->proxy_ping(%params) ) ) {
 
             # CTRL-C?
             last if ($stopReplay);
 
-            printf $FORMAT . "%s %2i %2i %5i", $host->{host}, yyyymmddhhmmss(), $pings->ppSent(), $pings->ppReceived(), $pings->ppAverage();
+            printf $FORMAT . "%s %2i %2i %5i", $host->{host},
+              yyyymmddhhmmss(), $pings->ppSent(), $pings->ppReceived(),
+              $pings->ppAverage();
 
             # assign new min/max if the current ping time is a better choice
-            if ($pings->ppMinimum() < $min) {
+            if ( $pings->ppMinimum() < $min ) {
                 $min = $pings->ppMinimum();
-                printf "   %5i", $min
-            } else { print "        " }
-            if ($pings->ppMaximum() > $max) {
+                printf "   %5i", $min;
+            } else {
+                print "        ";
+            }
+            if ( $pings->ppMaximum() > $max ) {
                 $max = $pings->ppMaximum();
-                printf "   %5i", $max
+                printf "   %5i", $max;
             }
             print "\n";
 
-            # Increment total received to use with $j (total times) to calculate success percentage 
-            $received += $pings->ppReceived()
+            # Increment total received to use with $j (total times) to calculate success percentage
+            $received += $pings->ppReceived();
         } else {
             printf $FORMAT . "%s\n", $host->{host}, Cisco::SNMP->error;
-            if (Cisco::SNMP->error eq "NOT SUPPORTED") {
-                last
+            if ( Cisco::SNMP->error eq "NOT SUPPORTED" ) {
+                last;
             }
         }
-        $j++
+        $j++;
     }
 
     $session->close();
+
     # Summary stats
-    if ($opt{header}) {
-        printf $FORMAT . "----------------------------------------------\n", $host->{host};
-        printf $FORMAT . "Success Rate: %i%% ($received/%i)\n", $host->{host}, $received/(($j == 0) ? 1 : $j*$count)*100, $j*$count;
-        printf $FORMAT . "Min: %s ms, Max: $max ms\n", $host->{host}, (($min == 0) ? "<1" : $min) if ($received > 0)
+    if ( $opt{header} ) {
+        printf $FORMAT . "----------------------------------------------\n",
+          $host->{host};
+        printf $FORMAT . "Success Rate: %i%% ($received/%i)\n",
+          $host->{host}, $received / ( ( $j == 0 ) ? 1 : $j * $count ) * 100,
+          $j * $count;
+        printf $FORMAT . "Min: %s ms, Max: $max ms\n", $host->{host},
+          ( ( $min == 0 ) ? "<1" : $min )
+          if ( $received > 0 );
     }
 }
 
 ##################################################
 sub SNMP_Inventory {
 
-    my ($host, $log) = @_;
+    my ( $host, $log ) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('Entity', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'Entity', $host ) ) ) {
+        return;
     }
 
     my @mets;
-    if (defined $opt{metric}) {
-        @mets = split /,/, $opt{metric}
+    if ( defined $opt{metric} ) {
+        @mets = split /,/, $opt{metric};
     } else {
-        push @mets, "ModelName", "Descr", "SerialNum", "FirmwareRev", "SoftwareRev"
+        push @mets, "ModelName", "Descr", "SerialNum", "FirmwareRev",
+          "SoftwareRev";
     }
 
     my %OIDS;
-    $OIDS{lc($_)} = $_ for ($session->entityOIDs);
+    $OIDS{lc($_)} = $_ for ( $session->entityOIDs );
 
-    if (!defined(my $r = verifyMetrics(\@mets, \%OIDS))) {
-        return
+    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+        return;
     }
 
     my $OUT;
-    if ($log ne "") {
-        $OUT = open_log_file_keys($log, \@mets, \%OIDS)
+    if ( $log ne "" ) {
+        $OUT = open_log_file_keys( $log, \@mets, \%OIDS );
     }
 
     # header
-    if ($opt{header}) {
+    if ( $opt{header} ) {
         printf $FORMAT, $host->{host};
         for (@mets) {
-            if ($_ eq "descr") {
-                printf "%-30s", $OIDS{$_}
+            if ( $_ eq "descr" ) {
+                printf "%-30s", $OIDS{$_};
             } else {
-                printf "%-20s", $OIDS{$_}
+                printf "%-20s", $OIDS{$_};
             }
         }
         printf "\n" . $FORMAT, $host->{host};
         for (@mets) {
-            if ($_ eq "descr") {
-                print "-"x30
+            if ( $_ eq "descr" ) {
+                print "-" x 30;
             } else {
-                print "-"x20
+                print "-" x 20;
             }
         }
-        print "\n"
+        print "\n";
     }
 
-    if (defined(my $inventory = $session->entity_info())) {
-        for my $part (0..$#{$inventory}) {
-            next if (($inventory->entitySerialNum($part) eq '') && ($opt{inventory} <= 1));
+    if ( defined( my $inventory = $session->entity_info() ) ) {
+        for my $part ( 0 .. $#{$inventory} ) {
+            next
+              if ( ( $inventory->entitySerialNum($part) eq '' )
+                && ( $opt{inventory} <= 1 ) );
 
             printf $FORMAT, $host->{host};
             printf $OUT "%s\t", $host->{host} if ($OUT);
             for (@mets) {
-                if ($_ eq "descr") {
+                if ( $_ eq "descr" ) {
                     printf "%-30s", $inventory->[$part]->{$OIDS{$_}};
-                    printf $OUT "%s\t", $inventory->[$part]->{$OIDS{$_}} if ($OUT)
+                    printf $OUT "%s\t", $inventory->[$part]->{$OIDS{$_}}
+                      if ($OUT);
                 } else {
                     printf "%-20s", $inventory->[$part]->{$OIDS{$_}};
-                    printf $OUT "%s\t", $inventory->[$part]->{$OIDS{$_}} if ($OUT)
+                    printf $OUT "%s\t", $inventory->[$part]->{$OIDS{$_}}
+                      if ($OUT);
                 }
             }
             print "\n";
-            print $OUT "\n" if ($OUT)
+            print $OUT "\n" if ($OUT);
         }
     } else {
-        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n", $host->{host}
+        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n",
+          $host->{host};
     }
 
     close($OUT) if ($OUT);
-    $session->close()
+    $session->close();
 }
 
 ##################################################
@@ -1453,42 +1635,52 @@ sub SNMP_GetInfo {
     my ($host) = @_;
 
     my $session;
-    if (!defined($session = getCMSession('System', $host))) {
-        return
+    if ( !defined( $session = getCMSession( 'System', $host ) ) ) {
+        return;
     }
 
-    if (defined(my $sysinfo = $session->system_info())) {
-        printf $FORMAT . "sysDescr        = %s\n", $host->{host}, $sysinfo->sysDescr;
-        printf $FORMAT . "sysObjectID     = %s\n", $host->{host}, $sysinfo->sysObjectID;
-        printf $FORMAT . "sysUpTime       = %s\n", $host->{host}, $sysinfo->sysUpTime;
-        printf $FORMAT . "sysConctact     = %s\n", $host->{host}, $sysinfo->sysContact;
-        printf $FORMAT . "sysName         = %s\n", $host->{host}, $sysinfo->sysName;
-        printf $FORMAT . "sysLocation     = %s\n", $host->{host}, $sysinfo->sysLocation;
-        printf $FORMAT . "sysORLastChange = %s\n", $host->{host}, $sysinfo->sysORLastChange;
-        printf $FORMAT . "sysOSVersion    = %s\n", $host->{host}, $sysinfo->sysOSVersion;
+    if ( defined( my $sysinfo = $session->system_info() ) ) {
+        printf $FORMAT . "sysDescr        = %s\n", $host->{host},
+          $sysinfo->sysDescr;
+        printf $FORMAT . "sysObjectID     = %s\n", $host->{host},
+          $sysinfo->sysObjectID;
+        printf $FORMAT . "sysUpTime       = %s\n", $host->{host},
+          $sysinfo->sysUpTime;
+        printf $FORMAT . "sysConctact     = %s\n", $host->{host},
+          $sysinfo->sysContact;
+        printf $FORMAT . "sysName         = %s\n", $host->{host},
+          $sysinfo->sysName;
+        printf $FORMAT . "sysLocation     = %s\n", $host->{host},
+          $sysinfo->sysLocation;
+        printf $FORMAT . "sysORLastChange = %s\n", $host->{host},
+          $sysinfo->sysORLastChange;
+        printf $FORMAT . "sysOSVersion    = %s\n", $host->{host},
+          $sysinfo->sysOSVersion;
         printf $FORMAT . "sysServices     = ", $host->{host};
-        print "$_ " for (@{$sysinfo->sysServices});
-        print "\n"
+        print "$_ " for ( @{$sysinfo->sysServices} );
+        print "\n";
     } else {
-        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n", $host->{host}
+        printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")\n",
+          $host->{host};
     }
 }
 
 ##################################################
 sub TELNET_Mode {
 
-    my ($host, $cmds) = @_;
+    my ( $host, $cmds ) = @_;
 
     my $result = 0;
     my %sessions;
 
-    for my $h (0..$#{$host}) {
+    for my $h ( 0 .. $#{$host} ) {
+
         # Make sure port is acceptable
-        if (!defined $host->[$h]->{port}) {
-            if (defined $opt{ssh}) {
-                $host->[$h]->{port} = 22
+        if ( !defined $host->[$h]->{port} ) {
+            if ( defined $opt{ssh} ) {
+                $host->[$h]->{port} = 22;
             } else {
-                $host->[$h]->{port} = 23
+                $host->[$h]->{port} = 23;
             }
         }
 
@@ -1498,169 +1690,191 @@ sub TELNET_Mode {
                 PeerHost => $host->[$h]->{addr},
                 PeerPort => $host->[$h]->{port},
                 Family   => $host->[$h]->{family}
-            )
+            );
         } else {
             $socket = IO::Socket::INET->new(
                 PeerHost => $host->[$h]->{addr},
                 PeerPort => $host->[$h]->{port}
-            )
+            );
         }
 
-        if (!$socket) {
+        if ( !$socket ) {
             printf $FORMAT. "$FAILED (No connect)\n", $host->[$h]->{host};
-            if (defined $opt{force}) {
-                next
+            if ( defined $opt{force} ) {
+                next;
             } else {
-                return
+                return;
             }
         }
 
         my $session;
-        if (defined $opt{ssh}) {
+        if ( defined $opt{ssh} ) {
             $session = Net::SSH2::Cisco->new(
                 fhopen  => $socket,
                 binmode => 1,
                 Errmode => 'return',
                 Prompt  => $PROMPT
-            )
+            );
         } else {
             $session = Net::Telnet::Cisco->new(
                 fhopen  => $socket,
                 binmode => 1,
                 Errmode => 'return',
                 Prompt  => $PROMPT
-            )
+            );
         }
 
-        if (!$session) {
+        if ( !$session ) {
             printf $FORMAT. "$FAILED (No session)\n", $host->[$h]->{host};
-            if (!defined $opt{force}) {
-                return
+            if ( !defined $opt{force} ) {
+                return;
             }
         }
-        $sessions{$host->[$h]->{host}} = $session
+        $sessions{$host->[$h]->{host}} = $session;
     }
 
     my @hosts;
-    for my $h (0..$#{$host}) {
+    for my $h ( 0 .. $#{$host} ) {
+
         # keep new array of successfully connected hosts (required for -f (force))
-        if (defined $sessions{$host->[$h]->{host}}) {
-            push @hosts, $host->[$h]->{host}
+        if ( defined $sessions{$host->[$h]->{host}} ) {
+            push @hosts, $host->[$h]->{host};
         } else {
-            next
+            next;
         }
 
         my $log = "";
-        if ($opt{write}) {
-            $sessions{$host->[$h]->{host}}->max_buffer_length(5 * 1024 * 1024);
+        if ( $opt{write} ) {
+            $sessions{$host->[$h]->{host}}
+              ->max_buffer_length( 5 * 1024 * 1024 );
 
-            if (($opt{write} == 1) || ($opt{write} == 3)){
-                $log = get_log_file($host->[$h]->{host}, $opt{dir}, undef);
+            if ( ( $opt{write} == 1 ) || ( $opt{write} == 3 ) ) {
+                $log = get_log_file( $host->[$h]->{host}, $opt{dir}, undef );
                 $sessions{$host->[$h]->{host}}->input_log($log);
-                printf $FORMAT . "Writing log $log $SUCCESS\n", $host->[$h]->{host}
+                printf $FORMAT . "Writing log $log $SUCCESS\n",
+                  $host->[$h]->{host};
             }
 
             # start TAIL if requested
-            if ($opt{write} == 3) {
+            if ( $opt{write} == 3 ) {
+
                 # Windows
                 my @pathDirs = split /;/, $ENV{PATH};
                 for (@pathDirs) {
                     $_ =~ s/\\$//;
-                    if (-e ($_ . "\\tail.exe")) {
-                        system ("start \"CRAPPS - $log\" tail -f $log");
-                        last
+                    if ( -e ( $_ . "\\tail.exe" ) ) {
+                        system("start \"CRAPPS - $log\" tail -f $log");
+                        last;
                     }
                 }
+
                 # *nix
-                system ("tail -f $log &") if (-e "/usr/bin/tail")
+                system("tail -f $log &") if ( -e "/usr/bin/tail" );
             }
 
             # dump log
-            if ($opt{write} == 4) {
-                $log = get_log_file($host->[$h]->{host}, $opt{dir}, 'dump');
+            if ( $opt{write} == 4 ) {
+                $log = get_log_file( $host->[$h]->{host}, $opt{dir}, 'dump' );
                 $sessions{$host->[$h]->{host}}->dump_log($log);
-                printf $FORMAT . "Writing log $log $SUCCESS\n", $host->[$h]->{host}
+                printf $FORMAT . "Writing log $log $SUCCESS\n",
+                  $host->[$h]->{host};
             }
         }
 
         # Terminal Server?
-        if ($opt{term} and !defined $opt{ssh}) {
-            $result = $sessions{$host->[$h]->{host}}->cmd("\n") for (1..$opt{term})
+        if ( $opt{term} and !defined $opt{ssh} ) {
+            $result = $sessions{$host->[$h]->{host}}->cmd("\n")
+              for ( 1 .. $opt{term} );
         }
 
         # login
-        if ((defined $opt{user}) or (defined $opt{ssh})) {
+        if ( ( defined $opt{user} ) or ( defined $opt{ssh} ) ) {
+
             # with Username
-            if (!($sessions{$host->[$h]->{host}}->login(Name => $opt{user}, Password => $opt{pass}))) {
-                printf $FORMAT. "$FAILED (Username login)\n", $host->[$h]->{host};
-                if (defined $opt{force}) {
+            if (!(  $sessions{$host->[$h]->{host}}
+                    ->login( Name => $opt{user}, Password => $opt{pass} )
+                )
+              ) {
+                printf $FORMAT. "$FAILED (Username login)\n",
+                  $host->[$h]->{host};
+                if ( defined $opt{force} ) {
                     $sessions{$host->[$h]->{host}}->close;
-                    $sessions{$host->[$h]->{host}} = undef
+                    $sessions{$host->[$h]->{host}} = undef;
                 } else {
-                    $sessions{$_}->close for (keys(%sessions));
-                    return
+                    $sessions{$_}->close for ( keys(%sessions) );
+                    return;
                 }
             }
         } else {
+
             # without Username
-            if (!($sessions{$host->[$h]->{host}}->login(Password => $opt{pass}))) {
+            if (!(  $sessions{$host->[$h]->{host}}
+                    ->login( Password => $opt{pass} )
+                )
+              ) {
                 printf $FORMAT. "$FAILED (login)\n", $host->[$h]->{host};
-                if (defined $opt{force}) {
+                if ( defined $opt{force} ) {
                     $sessions{$host->[$h]->{host}}->close;
-                    $sessions{$host->[$h]->{host}} = undef
+                    $sessions{$host->[$h]->{host}} = undef;
                 } else {
-                    $sessions{$_}->close for (keys(%sessions));
-                    return
+                    $sessions{$_}->close for ( keys(%sessions) );
+                    return;
                 }
             }
         }
 
         # enable if provided
-        if (defined $opt{enable}) {
-            if (!($sessions{$host->[$h]->{host}}->enable($opt{enable}))) {
+        if ( defined $opt{enable} ) {
+            if ( !( $sessions{$host->[$h]->{host}}->enable( $opt{enable} ) ) )
+            {
                 printf $FORMAT. "$FAILED (enable)\n", $host->[$h]->{host};
-                if (defined $opt{force}) {
+                if ( defined $opt{force} ) {
                     $sessions{$host->[$h]->{host}}->close;
-                    $sessions{$host->[$h]->{host}} = undef
+                    $sessions{$host->[$h]->{host}} = undef;
                 } else {
-                    $sessions{$_}->close for (keys(%sessions));
-                    return
+                    $sessions{$_}->close for ( keys(%sessions) );
+                    return;
                 }
             }
         }
 
         # turn off paging by default for CatOS or IOS
-        if (defined $sessions{$host->[$h]->{host}}) {
-            if ($opt{Catos}) {
-                $result = $sessions{$host->[$h]->{host}}->cmd('set length 0')
+        if ( defined $sessions{$host->[$h]->{host}} ) {
+            if ( $opt{Catos} ) {
+                $result = $sessions{$host->[$h]->{host}}->cmd('set length 0');
             } else {
-                $result = $sessions{$host->[$h]->{host}}->cmd('terminal length 0')
+                $result
+                  = $sessions{$host->[$h]->{host}}->cmd('terminal length 0');
             }
         }
     }
 
     # create final array of successfully connected and logged on hosts (required for -f (force))
     my @temp;
-    for my $h (0..$#{$host}) {
-        if (defined $sessions{$host->[$h]->{host}}) {
-            push @temp, $host->[$h]
+    for my $h ( 0 .. $#{$host} ) {
+        if ( defined $sessions{$host->[$h]->{host}} ) {
+            push @temp, $host->[$h];
         }
     }
 
     # return if no hosts opened (required for -f (force))
-    if ($#temp == -1) {
+    if ( $#temp == -1 ) {
         print "$FAILED (No connections opened)\n";
-        return
+        return;
     } else {
-        $host = \@temp
+        $host = \@temp;
     }
 
     # apply commands
     # interactive mode
-    if (defined $cmds->[0] && ($cmds->[0] eq "--STDIN--")) {
+    if ( defined $cmds->[0] && ( $cmds->[0] eq "--STDIN--" ) ) {
 
-        my $cmdPrompt = ($#{$host} == 0) ? $host->[0]->{host} . ":" . $host->[0]->{port} : $#{$host} + 1  . " hosts";
-        printf $FORMAT . "CONNECTED! - Enter commands, 'logout' to end\n", $cmdPrompt;
+        my $cmdPrompt
+          = ( $#{$host} == 0 )
+          ? $host->[0]->{host} . ":" . $host->[0]->{port}
+          : $#{$host} + 1 . " hosts";
+        printf $FORMAT . "CONNECTED! - Enter commands, 'logout' to end\n",
+          $cmdPrompt;
         my $cmd = "";
         $SIG{INT} = sub {
             print "SIGINT! - Stop\n";
@@ -1668,40 +1882,43 @@ sub TELNET_Mode {
         };
 
         # get command
-        while (lc($cmd) ne "logout") {
+        while ( lc($cmd) ne "logout" ) {
 
             printf $FORMAT, $cmdPrompt;
             $cmd = <STDIN>;
-            chomp $cmd if defined $cmd ;
+            chomp $cmd if defined $cmd;
 
             my $DONE = 0;
 # Sort by hostname
 #           for my $h (sort(keys(%sessions))) {
 # Sort by order entered on command line
-            for my $h (0..$#{$host}) {
+            for my $h ( 0 .. $#{$host} ) {
                 $sessions{$host->[$h]->{host}}->errmode(
-                    sub { 
-                        if (!$sessions{$host->[$h]->{host}}->eof()) {
-                            printf $FORMAT . $FAILED . " ($cmd)\n", $host->[$h]->{host}
+                    sub {
+                        if ( !$sessions{$host->[$h]->{host}}->eof() ) {
+                            printf $FORMAT . $FAILED . " ($cmd)\n",
+                              $host->[$h]->{host};
                         }
                     }
                 );
                 my @output = $sessions{$host->[$h]->{host}}->cmd($cmd);
-                if ($opt{write} == 2) {
+                if ( $opt{write} == 2 ) {
                     printf $FORMAT . "$cmd\n", $host->[$h]->{host};
-                    print $_ for (@output)
+                    print $_ for (@output);
                 }
+
                 # detect session end
-                if ($sessions{$host->[$h]->{host}}->eof()) {
-                    $DONE = 1
+                if ( $sessions{$host->[$h]->{host}}->eof() ) {
+                    $DONE = 1;
                 }
             }
-            last if ($DONE)
+            last if ($DONE);
         }
 
-    # not interactive
+        # not interactive
     } else {
         my $session = $sessions{$host->[0]->{host}};
+
         # Ctrl-C handler to stop replay/repeat
         my $stopReplay = 0;
         my $stopRepeat = 0;
@@ -1709,42 +1926,54 @@ sub TELNET_Mode {
         $SIG{INT} = sub {
             print "\n";
             while (1) {
-                printf $FORMAT . "SIGINT! - Stop (R)eplay (r)epeat (Q)uit: ", $host->[0]->{host};
-                chomp(my $uInput = <STDIN>);
-                if ($uInput eq "r") { $stopRepeat = 1; return }
-                if ($uInput eq "R") { $stopReplay = 1; return }
-                if (lc($uInput) eq "q") { $stopRepeat = 1; $stopReplay = 1; $stopQuit = 1; return }
+                printf $FORMAT . "SIGINT! - Stop (R)eplay (r)epeat (Q)uit: ",
+                  $host->[0]->{host};
+                chomp( my $uInput = <STDIN> );
+                if ( $uInput eq "r" ) { $stopRepeat = 1; return }
+                if ( $uInput eq "R" ) { $stopReplay = 1; return }
+                if ( lc($uInput) eq "q" ) {
+                    $stopRepeat = 1;
+                    $stopReplay = 1;
+                    $stopQuit   = 1;
+                    return;
+                }
             }
         };
 
         my $i = 0;
-        $stopReplay = 0; # Reset Replay for next host
-        while ($i != $opt{replay}) {
+        $stopReplay = 0;    # Reset Replay for next host
+        while ( $i != $opt{replay} ) {
 
             # Loop up commands
-            for my $cmd (@{$cmds}) {
+            for my $cmd ( @{$cmds} ) {
 
                 my $j = 0;
-                $stopRepeat = 0; # Reset Repeat for next host
-                while ($j != $opt{repeat}) {
+                $stopRepeat = 0;    # Reset Repeat for next host
+                while ( $j != $opt{repeat} ) {
 
                     chomp $cmd;
                     printf $FORMAT, $host->[0]->{host};
 
                     # Print replay/repeat numbers if we're looping
-                    if (($opt{repeat} != 1) || ($opt{replay} != 1)) {
-                        printf "[%s%s] ", ((!$stopReplay) && ($opt{replay} != 1)) ? "R" . ($i + 1) : "", ((!$stopRepeat) && ($opt{repeat} != 1)) ? "r" . ($j + 1) : ""
+                    if ( ( $opt{repeat} != 1 ) || ( $opt{replay} != 1 ) ) {
+                        printf "[%s%s] ",
+                          ( ( !$stopReplay ) && ( $opt{replay} != 1 ) )
+                          ? "R" . ( $i + 1 )
+                          : "",
+                          ( ( !$stopRepeat ) && ( $opt{repeat} != 1 ) )
+                          ? "r" . ( $j + 1 )
+                          : "";
                     }
                     print "$cmd ";
 
                     my $ERROR = 0;
                     $session->errmode(
-                        sub { 
-                            if (!$session->eof()) {
-                                if (defined $opt{force}) {
-                                    print $FAILED
+                        sub {
+                            if ( !$session->eof() ) {
+                                if ( defined $opt{force} ) {
+                                    print $FAILED;
                                 } else {
-                                    $ERROR = 1
+                                    $ERROR = 1;
                                 }
                             }
                         }
@@ -1753,26 +1982,26 @@ sub TELNET_Mode {
                     if ($ERROR) {
                         $session->close;
                         print "$FAILED ABORTING";
-                        return
+                        return;
                     }
-                    if ($opt{write} == 2) {
+                    if ( $opt{write} == 2 ) {
                         print "\n";
-                        print $_ for (@output)
+                        print $_ for (@output);
                     }
                     print "\n";
                     sleep $opt{Wait};
                     last if ($stopRepeat);
-                    $j++ # increment repeat
+                    $j++    # increment repeat
                 }
-                last if ($stopQuit)
+                last if ($stopQuit);
             }
             last if ($stopReplay);
-            $i++ # increment replay
+            $i++            # increment replay
         }
     }
 
-    for my $h (0..$#{$host}) {
-        $sessions{$host->[$h]->{host}}->close
+    for my $h ( 0 .. $#{$host} ) {
+        $sessions{$host->[$h]->{host}}->close;
     }
 }
 
@@ -1783,26 +2012,31 @@ sub PING_Mode {
 
     # Create Ping object
     my $p;
-    if (defined $opt{metric}) {
-        if    ($opt{metric} =~ /^icmp$/i) { $p = Net::Ping->new('icmp') }
-        elsif ($opt{metric} =~ /^tcp$/i)  { $p = Net::Ping->new('tcp')  }
-        elsif ($opt{metric} =~ /^udp$/i)  { $p = Net::Ping->new('udp')  }
-        elsif ($opt{metric} =~ /^syn$/i)  { $p = Net::Ping->new('syn')  }
+    if ( defined $opt{metric} ) {
+        if    ( $opt{metric} =~ /^icmp$/i ) { $p = Net::Ping->new('icmp') }
+        elsif ( $opt{metric} =~ /^tcp$/i )  { $p = Net::Ping->new('tcp') }
+        elsif ( $opt{metric} =~ /^udp$/i )  { $p = Net::Ping->new('udp') }
+        elsif ( $opt{metric} =~ /^syn$/i )  { $p = Net::Ping->new('syn') }
         else {
-            return $FAILED . " (Undefined protocol: $opt{metric})"
+            return $FAILED . " (Undefined protocol: $opt{metric})";
         }
     } else {
         $opt{metric} = "TCP";
-        $p = Net::Ping->new()
+        $p = Net::Ping->new();
     }
 
     $p->hires(1);
-    $opt{metric} = uc($opt{metric});
+    $opt{metric} = uc( $opt{metric} );
 
     my $interfaces = [0];
-    if (defined $opt{interface} && ($opt{interface} ne "") && ($opt{metric} !~ /^icmp$/i)) {
-        if (!defined($interfaces = Cisco::SNMP::_get_range($opt{interface}))) {
-            return $FAILED . " (" . Cisco::SNMP->error . ")"
+    if (   defined $opt{interface}
+        && ( $opt{interface} ne "" )
+        && ( $opt{metric} !~ /^icmp$/i ) ) {
+        if (!defined(
+                $interfaces = Cisco::SNMP::_get_range( $opt{interface} )
+            )
+          ) {
+            return $FAILED . " (" . Cisco::SNMP->error . ")";
         }
     }
 
@@ -1814,97 +2048,110 @@ sub PING_Mode {
         print "\n";
         while (1) {
             print "SIGINT! - Stop (R)eplay (r)epeat (Q)uit: ";
-            chomp(my $uInput = <STDIN>);
-            if ($uInput eq "r") { $stopRepeat = 1; return }
-            if ($uInput eq "R") { $stopReplay = 1; return }
-            if (lc($uInput) eq "q") { $stopRepeat = 1; $stopReplay = 1; $stopQuit = 1; return }
+            chomp( my $uInput = <STDIN> );
+            if ( $uInput eq "r" ) { $stopRepeat = 1; return }
+            if ( $uInput eq "R" ) { $stopReplay = 1; return }
+            if ( lc($uInput) eq "q" ) {
+                $stopRepeat = 1;
+                $stopReplay = 1;
+                $stopQuit   = 1;
+                return;
+            }
         }
     };
 
     my $i = 0;
-    $stopReplay = 0; # Reset Replay for next host
-    while ($i != $opt{replay}) {
-        for (@{$interfaces}) {
+    $stopReplay = 0;    # Reset Replay for next host
+    while ( $i != $opt{replay} ) {
+        for ( @{$interfaces} ) {
             my $port = 7;
-            if ($_ == 0) {
-                if ($opt{metric} =~ /^icmp$/i) { $port = 0 }
+            if ( $_ == 0 ) {
+                if ( $opt{metric} =~ /^icmp$/i ) { $port = 0 }
             } else {
-                 # Right way
-                 #$p->port_number($port = $_)
-                 # This will support older versions of Net::Ping
-                 $p->{port_num} = $port = $_
+
+                # Right way
+                #$p->port_number($port = $_)
+                # This will support older versions of Net::Ping
+                $p->{port_num} = $port = $_;
             }
 
             my $j = 0;
-            $stopRepeat = 0; # Reset Repeat for next host
-            while ($j != $opt{repeat}) {
+            $stopRepeat = 0;    # Reset Repeat for next host
+            while ( $j != $opt{repeat} ) {
                 printf $FORMAT, $host->{host};
 
                 # Print replay/repeat numbers if looping
-                if (($opt{repeat} != 1) || ($opt{replay} != 1)) {
-                    printf "[%s%s] ", ((!$stopReplay) && ($opt{replay} != 1)) ? "R" . ($i + 1) : "", ((!$stopRepeat) && ($opt{repeat} != 1)) ? "r" . ($j + 1) : ""
+                if ( ( $opt{repeat} != 1 ) || ( $opt{replay} != 1 ) ) {
+                    printf "[%s%s] ",
+                      ( ( !$stopReplay ) && ( $opt{replay} != 1 ) )
+                      ? "R" . ( $i + 1 )
+                      : "",
+                      ( ( !$stopRepeat ) && ( $opt{repeat} != 1 ) )
+                      ? "r" . ( $j + 1 )
+                      : "";
                 }
                 printf "%s[:%5i] ", $opt{metric}, $port;
 
                 # Execute Ping
-                my ($response, $rtt, $ip) = $p->ping($host->{addr});
+                my ( $response, $rtt, $ip ) = $p->ping( $host->{addr} );
                 if ($response) {
-                    printf $SUCCESS . " %2.3f sec\n", $rtt
+                    printf $SUCCESS . " %2.3f sec\n", $rtt;
                 } else {
-                    print "$FAILED\n"
+                    print "$FAILED\n";
                 }
                 sleep $opt{Wait};
                 last if ($stopRepeat);
-                $j++ # increment repeat
+                $j++    # increment repeat
             }
-            last if ($stopQuit)
+            last if ($stopQuit);
         }
         last if ($stopReplay);
-        $i++ # increment replay
+        $i++            # increment replay
     }
 
-    $p->close()
+    $p->close();
 }
 
 ##################################################
 sub verifyMetrics {
-    my ($mets, $OIDS) = @_;
+    my ( $mets, $OIDS ) = @_;
 
     my @tMets;
-    for (@{$mets}) {
-        if (!defined $OIDS->{lc($_)}) {
-            if (!defined $opt{force}) {
+    for ( @{$mets} ) {
+        if ( !defined $OIDS->{lc($_)} ) {
+            if ( !defined $opt{force} ) {
                 print "$0: Unknown field `$_'";
-                return undef
+                return undef;
             }
         } else {
-            push @tMets, lc($_)
+            push @tMets, lc($_);
         }
     }
     undef @{$mets};
     push @{$mets}, @tMets;
-    return 1
+    return 1;
 }
 
 ##################################################
 sub get_log_file {
 
-    my ($host, $dir, $option) = @_;
+    my ( $host, $dir, $option ) = @_;
 
-    my $log = $host . (defined($option) ? ("-" . $option) : "") . ".log";
+    my $log = $host . ( defined($option) ? ( "-" . $option ) : "" ) . ".log";
 
     # append directory path to log file name
-    if (defined $dir) {
-        $log = $dir . "/" . $log
+    if ( defined $dir ) {
+        $log = $dir . "/" . $log;
     }
 
     # File exists
-    if (-e ($log)) {
+    if ( -e ($log) ) {
         $log =~ s/\.log$//;
+
         # Get unique filename by appending date
-        $log = $log . "-" . yyyymmddhhmmss() . ".log"
+        $log = $log . "-" . yyyymmddhhmmss() . ".log";
     }
-    return $log
+    return $log;
 }
 
 ##################################################
@@ -1913,27 +2160,29 @@ sub open_log_file {
 
     my $OUT;
     print "Writing log $log ";
-    if (open($OUT, '>', $log)) {
+    if ( open( $OUT, '>', $log ) ) {
+
         # autoflush (in case tail -f)
         select $OUT;
         $| = 1;
         select STDOUT;
 
-        print "$SUCCESS\n"
+        print "$SUCCESS\n";
     } else {
         print "$FAILED\n";
-        undef $OUT
+        undef $OUT;
     }
-    return $OUT
+    return $OUT;
 }
 
 ##################################################
 sub open_log_file_keys {
-    my ($log, $mets, $OIDS) = @_;
+    my ( $log, $mets, $OIDS ) = @_;
 
     my $OUT;
     print "Writing log $log ";
-    if (open($OUT, '>', $log)) {
+    if ( open( $OUT, '>', $log ) ) {
+
         # autoflush (in case tail -f)
         select $OUT;
         $| = 1;
@@ -1942,21 +2191,31 @@ sub open_log_file_keys {
         print "$SUCCESS\n";
 
         print $OUT "HOST\t";
-        for (@{$mets}) {
-            print $OUT $OIDS->{$_} . "\t"
+        for ( @{$mets} ) {
+            print $OUT $OIDS->{$_} . "\t";
         }
-        print $OUT "\n"
+        print $OUT "\n";
     } else {
         print "$FAILED\n";
-        undef $OUT
+        undef $OUT;
     }
-    return $OUT
+    return $OUT;
 }
 
 ##################################################
 sub yyyymmddhhmmss {
     my @time = localtime();
-    return (($time[5] + 1900) . ((($time[4] + 1) < 10)?("0" . ($time[4] + 1)):($time[4] + 1)) . (($time[3] < 10)?("0" . $time[3]):$time[3]) . (($time[2] < 10)?("0" . $time[2]):$time[2]) . (($time[1] < 10)?("0" . $time[1]):$time[1]) . (($time[0] < 10)?("0" . $time[0]):$time[0]))
+    return (
+        ( $time[5] + 1900 )
+        . (   ( ( $time[4] + 1 ) < 10 )
+            ? ( "0" . ( $time[4] + 1 ) )
+            : ( $time[4] + 1 )
+          )
+          . ( ( $time[3] < 10 ) ? ( "0" . $time[3] ) : $time[3] )
+          . ( ( $time[2] < 10 ) ? ( "0" . $time[2] ) : $time[2] )
+          . ( ( $time[1] < 10 ) ? ( "0" . $time[1] ) : $time[1] )
+          . ( ( $time[0] < 10 ) ? ( "0" . $time[0] ) : $time[0] )
+    );
 }
 
 ##################################################
@@ -1965,116 +2224,136 @@ sub PASSWORD_Mode {
     my $result = 0;
 
     # Encrypt
-    if (defined $opt{enable}) {
+    if ( defined $opt{enable} ) {
+
         # MD5
-        if (defined $opt{snmp}) {
+        if ( defined $opt{snmp} ) {
             if ($HAVE_Crypt_PasswdMD5) {
+
                 # Standard Cisco salt length is 4, but testing shows it accepts from 1 to 7 inclusive
-                if ((length($opt{snmp}) > 7) || (length($opt{snmp}) < 1)) {
-                    $opt{snmp} = 'crap'
+                if (   ( length( $opt{snmp} ) > 7 )
+                    || ( length( $opt{snmp} ) < 1 ) ) {
+                    $opt{snmp} = 'crap';
                 }
-                printf "%s\n", unix_md5_crypt($opt{Pass}, $opt{snmp});
-                return $SUCCESS
+                printf "%s\n", unix_md5_crypt( $opt{Pass}, $opt{snmp} );
+                return $SUCCESS;
             } else {
                 print "$0: Requires Crypt::PasswdMD5\n";
-                exit
+                exit;
             }
-        # Type 7
+
+            # Type 7
         } else {
-            if (($result = Cisco::SNMP::Password->password_encrypt($opt{Pass}, $opt{enable})) == 0) {
-                printf "$0: %s\n", Cisco::SNMP->error
+            if ((   $result = Cisco::SNMP::Password->password_encrypt(
+                        $opt{Pass}, $opt{enable}
+                    )
+                ) == 0
+              ) {
+                printf "$0: %s\n", Cisco::SNMP->error;
             } else {
-                for my $p (@{$result}) {
-                    print "$p\n"
+                for my $p ( @{$result} ) {
+                    print "$p\n";
                 }
             }
-            return $SUCCESS
+            return $SUCCESS;
         }
-    # Decrypt
+
+        # Decrypt
     } else {
         my @passwords;
 
         # -P file
-        if (open(my $IN, '<', $opt{Pass})) {
+        if ( open( my $IN, '<', $opt{Pass} ) ) {
             my $linecnt = 1;
             while (<$IN>) {
                 chomp $_;
-                if (defined $opt{dir}) {
-                    if ($_ =~ $PASSWORD5) { push @passwords, "($linecnt) " . $_ }
+                if ( defined $opt{dir} ) {
+                    if ( $_ =~ $PASSWORD5 ) {
+                        push @passwords, "($linecnt) " . $_;
+                    }
                 } else {
-                    if ($_ =~ $PASSWORD7) { push @passwords, "($linecnt) " . $_ }
+                    if ( $_ =~ $PASSWORD7 ) {
+                        push @passwords, "($linecnt) " . $_;
+                    }
                 }
-                $linecnt++
+                $linecnt++;
             }
             close($IN);
 
-        # -P password
+            # -P password
         } else {
-            push @passwords, $opt{Pass}
+            push @passwords, $opt{Pass};
         }
 
         for my $pass (@passwords) {
 
             # $pass is a password if it was a password originally.
-            # $pass is a line from a router config if password was a file so we 
+            # $pass is a line from a router config if password was a file so we
             # need to split $pass into array at spaces, last of which is password.
             my @parts = split / /, $pass;
 
             # MD5
-            if (defined $opt{dir}) {
+            if ( defined $opt{dir} ) {
                 if ($HAVE_Crypt_PasswdMD5) {
                     my $DONE = 0;
                     my $salt = $parts[$#parts];
                     $salt =~ s/^\$1\$//;
                     $salt =~ s/^(.*)\$.*$/$1/;
-                    $salt = substr($salt, 0, 8);
+                    $salt = substr( $salt, 0, 8 );
 
                     # -d File
                     my @dictionary;
-                    if (-e $opt{dir}) {
-                        open(my $DICT, '<', $opt{dir});
+                    if ( -e $opt{dir} ) {
+                        open( my $DICT, '<', $opt{dir} );
                         @dictionary = <$DICT>;
                         close($DICT)
-                    # -d word
+
+                          # -d word
                     } else {
-                        push @dictionary, $opt{dir}
+                        push @dictionary, $opt{dir};
                     }
 
-                    if (-e $opt{Pass}) {
-                        print "$opt{Pass}:$pass\n"
+                    if ( -e $opt{Pass} ) {
+                        print "$opt{Pass}:$pass\n";
                     }
 
                     for my $word (@dictionary) {
                         chomp $word;
-                        print "Trying: $word\n" if (defined $opt{write});
-                        if (unix_md5_crypt($word, $salt) eq $parts[$#parts]) {
+                        print "Trying: $word\n" if ( defined $opt{write} );
+                        if ( unix_md5_crypt( $word, $salt ) eq $parts[$#parts]
+                          ) {
                             print "$word\n";
                             $DONE = 1;
-                            last
+                            last;
                         }
                     }
-                    if (!$DONE) {
-                        print "$FAILED\n"
+                    if ( !$DONE ) {
+                        print "$FAILED\n";
                     }
-                    print "\n"
+                    print "\n";
                 } else {
                     print "$0: Requires Crypt::PasswdMD5\n";
-                    exit
+                    exit;
                 }
-            # Type 7
+
+                # Type 7
             } else {
-                if (-e $opt{Pass}) {
-                    print "$opt{Pass}:$pass\n"
+                if ( -e $opt{Pass} ) {
+                    print "$opt{Pass}:$pass\n";
                 }
-                if (($result = Cisco::SNMP::Password->password_decrypt($parts[$#parts])) eq 0) {
-                    print $FAILED . " (" . Cisco::SNMP->error . ")"
+                if ((   $result = Cisco::SNMP::Password->password_decrypt(
+                            $parts[$#parts]
+                        )
+                    ) eq 0
+                  ) {
+                    print $FAILED . " (" . Cisco::SNMP->error . ")";
                 } else {
-                    print "$result\n"
+                    print "$result\n";
                 }
-                print "\n"
+                print "\n";
             }
         }
-        return $SUCCESS
+        return $SUCCESS;
     }
 }
 
@@ -2100,7 +2379,7 @@ CRAPPS - Cisco Router Action Performing Perl Script
 
 =head1 DESCRIPTION
 
-Script will interface with Cisco router via SNMP or Telnet, supporting 
+Script will interface with Cisco router via SNMP, Telnet or SSH supporting 
 regular login or username, and perform actions.  SNMP supports a get 
 config, put config and a save config (C<wr mem> for IOS).  SNMP mode also
 supports get and clear VTY line function and a get interface list and 
@@ -2119,8 +2398,7 @@ Type 7 (not C<enable secret>) are decrypted or encrypted to all
 possible encryptions.  Type 5 (C<enable secret>) are encrypted or 
 decrypted by dictionary brute force.
 
-Server mode is provided for service listening.  Default execution 
-with no options provides Ping.
+Default execution with no options provides Ping.
 
 =head1 CAVEATS
 

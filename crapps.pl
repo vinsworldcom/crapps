@@ -98,7 +98,7 @@ GetOptions(
     'Password=s'             => \$opt{Pass},
     'r|repeat=i'             => \$opt{repeat},
     'R|replay=i'             => \$opt{replay},
-    'snmp|salt=s'            => \$opt{snmp},
+    's|snmp|salt=s'          => \$opt{snmp},
     'S|ssh!'                 => \$opt{ssh},
     't|tftp:s'               => \$opt{tftp},
     'T|terminal+'            => \$opt{term},
@@ -749,11 +749,7 @@ sub getCMSession {
         $params{community} = $opt{snmp};
     }
 
-    my $s = ( 'Cisco::SNMP::' . $t )->new(
-        hostname => $h->{addr},
-        family   => $h->{family},
-        %params
-    );
+    my $s = ( 'Cisco::SNMP::' . $t )->new( %params );
 
     if ( !defined $s ) {
         printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")", $h->{host};

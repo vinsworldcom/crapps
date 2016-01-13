@@ -13,16 +13,16 @@ supports get and clear VTY line function and a get interface list and
 monitor interface utilization function, including CPU, memory and proxy
 ping.
 
-Telnet mode supports the issuing of commands from a file. The only
-default command issued in TELNET mode is "terminal length 0" for IOS or
+Telnet and SSH mode supports the issuing of commands from a file. The only
+default command issued in is "terminal length 0" for IOS or
 "set length 0" for CatOS. Therefore, show commands can be in the
 commands file along with config commands (on IOS, as long as preceded by
 a "config term" and followed by an "end" and "wr mem" if save is
-desired). Telnet mode supports log file of session transcript.
+desired). Also supports log file of session transcript.
 
 Password decrypt and encrypt mode is provided for Cisco passwords. Type
-7 (not "enable secret") are decrypted or encrypted to the 16 possible
-encryptions. Type 5 ("enable secret") are encrypted or decrypted by
+7 (not "enable secret") are decrypted or encrypted to all possible
+combinations. Type 5 ("enable secret") are encrypted or cracked by
 dictionary brute force.
 
 Default execution with no options provides simple Ping.
@@ -37,23 +37,24 @@ DEPENDENCIES
     Getopt::Long
     Pod::Usage
     Sys::Hostname
-    IO::Socket
+    IO::Socket           (requires version >1.94 for IPv6 support)
     Net::Ping
-    Digest::MD5        + (required by Crypt::PasswdMD5)
+    Digest::MD5        ? (required by Crypt::PasswdMD5)
     Term::ReadKey      ? (required for password masking)
 
   The following will probably require extra download:
 
-    Net::SNMP          + (required by Cisco::Management)
+    Net::SNMP            (required by Cisco::Management)
     Cisco::SNMP        *
-    Net::Telnet        + (required by Net::Telnet::Cisco)
+    Net::Telnet        # (required by Net::Telnet::Cisco)
     Net::Telnet::Cisco
-    Net::SSH2          ?+ (required by Net::SSH2::Cisco)
-    Net::SSH2::Cisco   ?* (only on GitHub)
+    Net::SSH2          ?# (required by Net::SSH2::Cisco)
+    Net::SSH2::Cisco   ?*
     Crypt::PasswdMD5   ? (required for MD5 -P modes)
 
     ? Modules for optional features
     + Not core modules - these are required by other modules.
+    # Not core modules, but supplied with Strawberry in vendor/lib
 
   All above Perl modules are NOT written or maintained by Michael 
   Vincent (except *).  For info on the required Perl modules, see 
@@ -62,12 +63,13 @@ DEPENDENCIES
 
 USAGE
 
-The following steps are geared towards a Windows installation of 
+The following steps are geared toward a Windows installation of 
 Perl and the use of CRAPPS on Windows.  However, CRAPPS is written 
 in Perl and thus is platform independent.  You can run it on any OS 
 that supports Perl and has the required modules.  It has been tested 
-successfully on Windows (2K, XP, 2K3), Linux (various flavors) and 
-Max OSX.
+successfully on Windows (2K, XP, 2K3, 7) 32-bit and 64-bit with 
+Strawberry versions 5.14 to 5.20 32-bit and 64-bit, Linux (various 
+flavors) and Mac OSX.
 
   1)  Install Perl
   2)  Install Perl Modules (if required)
@@ -90,7 +92,7 @@ PATHEXT environment variable so you can run the Perl scripts that
 you'll no doubt write simply by typing their name rather than prefacing 
 them with the "perl" command.
 
-This can be done by (example on Windows XP):
+This can be done by (example on Windows):
 
   1)  Control Panel --> System --> "Advanced" tab --> 
       "Environment Variables" button.
@@ -151,6 +153,8 @@ Perl install) need:
 For optional features and full functionality, you will also need:
 
       cpan Crypt-PasswdMD5
+      cpan Net::SSH2::Cisco
+      cpan Crypt::PasswdMD5
 
 b) You can also download each module directly from CPAN 
 (http://search.cpan.org) and follow the installation procedures 
@@ -161,6 +165,7 @@ included with each modules.  Usually:
       make test
       make install
 
+      NOTE:  'make' should be 'dmake' on Windows Strawberry Perl
 
 3)  Test CRAPPS.PL
 
@@ -202,7 +207,7 @@ To get the 411, use:
 Once you start using CRAPPS.PL to automate some tasks to Cisco routers/
 switches, you'll start to realize that running it several times with 
 some "feedback" and parsing of output can lead to automation of more 
-complicated tasks.  To illustrate this, I've included some Batch file 
+complicated tasks.  To illustrate this, I've created some Batch file 
 "wrappers" that call CRAPPS.PL in various configurations with various 
 input commands to complete complex tasks.
 
@@ -237,9 +242,3 @@ run the batch file as a Scheduled Task every other night (to maintain
 20 days worth of back configs) and use two simple files - 1 for IOS and 
 1 for CatOS - that contain the names/IP's of the devices to backup for 
 easy editing by those who are Perl/Batch disabled.
-
-This surely provides some ideas on writing a more CRAPPS.PL related 
-Gnuplot driver that could pull the Interface name and speed from the 
-CRAPPS.PL output and feed those into Gnuplot for dynamic scales and 
-axes labels.  This is left as an exercise for the reader (at this 
-point).

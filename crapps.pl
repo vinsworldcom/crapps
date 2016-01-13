@@ -2370,7 +2370,6 @@ CRAPPS - Cisco Router Action Performing Perl Script
 =head1 SYNOPSIS
 
  crapps -P password [options]
- crapps -S svc [options]
  crapps [[SNMP options] | [Telnet options]] [options] host ...
 
 =head1 DESCRIPTION

@@ -1707,14 +1707,12 @@ sub TELNET_Mode {
         if ( defined $opt{ssh} ) {
             $session = Net::SSH2::Cisco->new(
                 fhopen  => $socket,
-                binmode => 1,
                 Errmode => 'return',
                 Prompt  => $PROMPT
             );
         } else {
             $session = Net::Telnet::Cisco->new(
                 fhopen  => $socket,
-                binmode => 1,
                 Errmode => 'return',
                 Prompt  => $PROMPT
             );

@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 ##################################################
 # AUTHOR = Michael Vincent
 # www.VinsWorld.com
@@ -7,7 +6,7 @@
 
 use vars qw($VERSION);
 
-$VERSION = "3.02 - 09 JUL 2015";
+$VERSION = "3.1 - 25 SEP 2017";
 
 use strict;
 use warnings;
@@ -25,20 +24,20 @@ my $AF_UNSPEC      = eval { Socket::AF_UNSPEC() };
 my $AI_NUMERICHOST = eval { Socket::AI_NUMERICHOST() };
 my $NI_NUMERICHOST = eval { Socket::NI_NUMERICHOST() };
 
-use Cisco::SNMP::Config 1.01;
-use Cisco::SNMP::CPU 1.01;
-use Cisco::SNMP::Entity 1.01;
-use Cisco::SNMP::Interface 1.01;
-use Cisco::SNMP::IP 1.01;
-use Cisco::SNMP::Line 1.01;
-use Cisco::SNMP::Memory 1.01;
-use Cisco::SNMP::Password 1.01;
-use Cisco::SNMP::ProxyPing 1.01;
-use Cisco::SNMP::System 1.01;
+use Cisco::SNMP::Config 1.03;
+use Cisco::SNMP::CPU 1.03;
+use Cisco::SNMP::Entity 1.03;
+use Cisco::SNMP::Interface 1.03;
+use Cisco::SNMP::IP 1.03;
+use Cisco::SNMP::Line 1.03;
+use Cisco::SNMP::Memory 1.03;
+use Cisco::SNMP::ProxyPing 1.03;
+use Cisco::SNMP::System 1.03;
+use Crypt::Cisco qw(:subs);
 use Net::Ping 2.31;
-use Net::Telnet::Cisco 1.10;
+use Net::Telnet::Cisco 1.11;
 my $HAVE_Net_SSH2_Cisco = 0;
-eval "use Net::SSH2::Cisco";
+eval "use Net::SSH2::Cisco 0.04";
 
 if ( !$@ ) {
     $HAVE_Net_SSH2_Cisco = 1;
@@ -60,7 +59,7 @@ eval "use Term::ReadKey";
 if ( !$@ ) {
     $HAVE_Term_ReadKey = 1;
 }
-##################################################
+##########################################
 # End Additional USE
 ##################################################
 
@@ -70,6 +69,7 @@ my $SUCCESS      = "SUCCESS!";
 my $CMD_FILE_EXT = ".confg";
 my $UNIQUE       = 0;
 my $FORMAT       = "%-19s > ";
+
 # REGEX to match lines in a Cisco config that contain passwords
 my $PASSWORD5 = qr/ secret 5 \$1/;
 my $PASSWORD7 = qr/( password 7 )|(-server key 7 )|( key-string 7 )/;
@@ -79,11 +79,21 @@ my $PROMPT
 my %opt;
 my ( $opt_help, $opt_man, $opt_versions );
 
+$opt{beep}   = 0;
+$opt{Catos}  = 0;
+$opt{header} = 1;
+$opt{write}  = 0;
+$opt{Wait}   = 0;
+
+# Default to IPv4 for backward compatiblity
+# THIS MAY CHANGE IN THE FUTURE!!!
+$opt{family} = AF_INET;
+
 GetOptions(
     '4!' => sub { $opt{family} = AF_INET },
     '6!' => sub { $opt{family} = $AF_INET6 },
     'beep+'                  => \$opt{beep},
-    'c|command=s'            => \$opt{command},
+    'c|command|config=s'     => \$opt{command},
     'C|catos!'               => \$opt{Catos},
     'directory|dictionary=s' => \$opt{dir},
     'encrypt|enable:s'       => \$opt{enable},
@@ -93,7 +103,7 @@ GetOptions(
     'i|interface:s'          => \$opt{interface},
     'I|inventory+'           => \$opt{inventory},
     'lines:s'                => \$opt{lines},
-    'm|metric|message|mib=s' => \$opt{metric},
+    'm|metric|message=s'     => \$opt{metric},
     'password:s'             => \$opt{pass},
     'Password=s'             => \$opt{Pass},
     'r|repeat=i'             => \$opt{repeat},
@@ -132,30 +142,35 @@ if ( defined $opt_versions ) {
       "    Getopt::Long        $Getopt::Long::VERSION\n",
       "    Pod::Usage          $Pod::Usage::VERSION\n",
 ##################################################
-# Start Additional USE
+      # Start Additional USE
 ##################################################
       "    Sys::Hostname       $Sys::Hostname::VERSION\n",
       "    Socket              $Socket::VERSION\n",
       "    Cisco::SNMP         $Cisco::SNMP::VERSION\n",
       "    Net::Ping           $Net::Ping::VERSION\n",
       "    Net::Telnet::Cisco  $Net::Telnet::Cisco::VERSION\n";
+
     if ($HAVE_Net_SSH2_Cisco) {
-        print "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n";
+print "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n";
     } else {
-        print "    Net::SSH2::Cisco    [NOT INSTALLED]\n";
+print "    Net::SSH2::Cisco    [NOT INSTALLED]\n";
     }
+
     if ($HAVE_Crypt_PasswdMD5) {
-        print "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n";
+print "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n";
     } else {
-        print "    Crypt::PasswdMD5    [NOT INSTALLED]\n";
+print "    Crypt::PasswdMD5    [NOT INSTALLED]\n";
     }
+
+print "    Crypt::Cisco        $Crypt::Cisco::VERSION\n";
+
     if ($HAVE_Term_ReadKey) {
-        print "    Term::ReadKey       $Term::ReadKey::VERSION\n";
+print "    Term::ReadKey       $Term::ReadKey::VERSION\n";
     } else {
-        print "    Term::ReadKey       [NOT INSTALLED]\n";
+print "    Term::ReadKey       [NOT INSTALLED]\n";
     }
 ##################################################
-# End Additional USE
+    # End Additional USE
 ##################################################
     print
       "    Perl version        $]\n",
@@ -169,11 +184,6 @@ if ( defined $opt_versions ) {
 # Start Program
 ##################################################
 
-$opt{beep} = $opt{beep} || 0;
-if ( !defined $opt{header} ) {
-    $opt{header} = 1;
-}
-
 # Password mode
 if ( defined $opt{Pass} ) {
     if ( ( my $ret = PASSWORD_Mode() ) eq $FAILED ) {
@@ -183,8 +193,7 @@ if ( defined $opt{Pass} ) {
     exit 0;
 }
 
-if (    !$HAVE_IO_Socket_IP
-    and defined $opt{family}
+if ( !$HAVE_IO_Socket_IP
     and ( $opt{family} == $AF_INET6 ) ) {
     print "IO::Socket::IP required for IPv6 (-6)\n";
     exit 1;
@@ -192,12 +201,6 @@ if (    !$HAVE_IO_Socket_IP
 if ( !$HAVE_Net_SSH2_Cisco and defined $opt{ssh} ) {
     print "Net::SSH2::Cisco required for SSH (-S)\n";
     exit 1;
-}
-
-# Default to IPv4 for backward compatiblity
-# THIS MAY CHANGE IN THE FUTURE!!!
-if ( !defined $opt{family} ) {
-    $opt{family} = AF_INET;
 }
 
 # -d directory
@@ -211,21 +214,10 @@ if ( defined $opt{dir} ) {
 }
 
 # Make sure at least one host provided
-if ( !@ARGV ) {
-    pod2usage( -verbose => 0, -message => "$0: host required\n" );
-}
+pod2usage( -verbose => 0, -message => "$0: host required\n" )
+  unless (@ARGV);
 
-# Don't allow TELNET and SNMP options together
-# v3 UPDATE:  Need --username / --password for SNMPv3
-#if (($opt{user} || $opt{pass} || $opt{enable}) && ($opt{snmp} || $opt{tftp} || $opt{lines} || $opt{interface} || $opt{inventory} || $opt{metric})) {
-#    print "$0: SNMP and TELNET options mutually exclusive\n";
-#    exit 1
-#}
-
-$opt{repeat} = Rr( $opt{repeat} );
-$opt{replay} = Rr( $opt{replay} );
-
-sub Rr {
+sub _Rr {
     my $opt = shift;
     if ( defined $opt ) {
         if ( $opt < 0 ) {
@@ -241,13 +233,13 @@ sub Rr {
     }
 }
 
-$opt{Catos} = $opt{Catos} || 0;
-$opt{write} = $opt{write} || 0;
-$opt{Wait}  = $opt{Wait}  || 0;
+$opt{repeat} = _Rr( $opt{repeat} );
+$opt{replay} = _Rr( $opt{replay} );
+
 if ( defined $opt{format} ) {
 
     # Format needs some form of printf % format to accommodate $host
-    if ( ( $opt{format} eq "" ) || ( $opt{format} !~ /%/ ) ) {
+    if ( ( $opt{format} eq "" ) or ( $opt{format} !~ /%/ ) ) {
 
         # %.0s = no size (sink variable, don't display)
         $FORMAT = "%.0s" . $opt{format};
@@ -269,7 +261,8 @@ if ( defined $opt{command} ) {
 # -s SNMP mode
 if ( defined $opt{snmp} ) {
     getSNMPOpts()
-# -p Telnet mode
+
+      # -p Telnet mode
 } elsif ( defined $opt{pass} ) {
     getTelnetOpts();
 }
@@ -321,16 +314,14 @@ for my $host ( 0 .. $#hosts ) {
 
         # SNMP WR MEM
         # if config failed, skip write.
-        if ( $opt{write} && ( $response =~ $FAILED ) ) {
+        if ( $opt{write} and ( $response =~ $FAILED ) ) {
             printf "$0: Skipping SNMP 'wr mem' > %s\n", $hosts[$host]->{host};
             next;
         } else {
             if ($opt{write}
-                && !(
-                       defined $opt{interface}
+                and not( defined $opt{interface}
                     || defined $opt{inventory}
-                    || defined $opt{lines}
-                )
+                    || defined $opt{lines} )
               ) {
                 $response = SNMP_Config( $hosts[$host], undef, 1 );
                 next;
@@ -379,29 +370,30 @@ for my $host ( 0 .. $#hosts ) {
                 # If Wait is <0 we need to adjust to minimum sample window (1)
                 $opt{Wait} = 1 if ( $opt{Wait} < 1 );
 
-                # admin up/down
-                if (defined $opt{command}
-                    && (   ( uc( $opt{command} ) eq "UP" )
-                        || ( uc( $opt{command} ) eq "DOWN" ) )
-                  ) {
-                    $response = SNMP_IntfUpDown( $hosts[$host] );
-                } else {
+                # logging?
+                my $log = "";
+                if ( $opt{write}
+                    and ( $opt{interface} =~ /^[1-9][0-9]*$/ ) ) {
+                    $log = get_log_file( $hosts[$host]->{host},
+                        $opt{dir}, "if" . $opt{interface} );
+                }
+                if ( $opt{interface} eq "0" ) {
+                    $response = SNMP_CPUUtil( $hosts[$host], $log );
+                } elsif ( $opt{interface} eq "00" ) {
+                    $response = SNMP_MemUtil( $hosts[$host], $log );
+                } elsif ( $opt{interface} =~ /^\d+$/ ) {
 
-                    # logging?
-                    my $log = "";
-                    if ( $opt{write} && ( $opt{interface} =~ /^[0-9]+$/ ) ) {
-                        $log = get_log_file( $hosts[$host]->{host},
-                            $opt{dir}, "if" . $opt{interface} );
-                    }
-                    if ( $opt{interface} eq "0" ) {
-                        $response = SNMP_CPUUtil( $hosts[$host], $log );
-                    } elsif ( $opt{interface} eq "00" ) {
-                        $response = SNMP_MemUtil( $hosts[$host], $log );
-                    } elsif ( $opt{interface} =~ /^\d+$/ ) {
-                        $response = SNMP_IntfUtil( $hosts[$host], $log );
+                    # admin up/down
+                    if (defined $opt{command}
+                        and (  ( uc( $opt{command} ) eq "UP" )
+                            or ( uc( $opt{command} ) eq "DOWN" ) )
+                      ) {
+                        $response = SNMP_IntfUpDown( $hosts[$host] );
                     } else {
-                        $response = SNMP_ProxyPing( $hosts[$host] );
+                        $response = SNMP_IntfUtil( $hosts[$host], $log );
                     }
+                } else {
+                    $response = SNMP_ProxyPing( $hosts[$host] );
                 }
             }
             next;
@@ -419,7 +411,7 @@ for my $host ( 0 .. $#hosts ) {
         }
 
         # SNMP Info
-        if ( !defined $opt{tftp} ) {
+        if ( not defined $opt{tftp} ) {
             $response = SNMP_GetInfo( $hosts[$host] );
         }
 
@@ -435,9 +427,9 @@ for my $host ( 0 .. $#hosts ) {
               = $opt{command} . $hosts[$host]->{host} . $CMD_FILE_EXT;
             printf $FORMAT . "Reading file: $u_file ", $hosts[$host]->{host};
             if ( -e $u_file ) {
-                open( my $CMDFILE, '<', $u_file );
-                @commands = <$CMDFILE>;
-                close($CMDFILE);
+                open( my $fh, '<', $u_file );
+                @commands = <$fh>;
+                close($fh);
                 print "$SUCCESS\n";
             } else {
                 print "$FAILED\n";
@@ -448,7 +440,7 @@ for my $host ( 0 .. $#hosts ) {
         # no commands = interactive
         # send all hosts at once - let TELNET_Mode loop
         # exit on return
-        if ( !defined $opt{command} ) {
+        if ( not defined $opt{command} ) {
             $response = TELNET_Mode( \@hosts, \@commands );
             last;
 
@@ -482,39 +474,36 @@ print "\a" if ( $opt{beep} == 1 );
 exit 0;
 
 ##################################################
-# End Program
+# Start Subs
 ##################################################
+sub _resolve {
+    my ( $host, $family, $ret ) = @_;
 
-##################################################
-# Begin Subroutines
-##################################################
+    if ( defined( my $r = Cisco::SNMP::_resolv( $host, $family ) ) ) {
+        return $r;
+    } else {
+        print Cisco::SNMP->error . "\n";
+        ( defined $ret ) ? return undef : exit 1;
+    }
+}
+
 sub getSNMPOpts {
 
     # CATOS and WRITE not allowed for SNMP mode
-    if ( ( $opt{Catos} ) && ( $opt{write} ) ) {
+    if ( $opt{Catos} and $opt{write} ) {
         print "$0: WR MEM not allowed with CatOS in SNMP mode\n";
         exit 1;
     }
 
     # TFTP: keep or assign localhost
     if ( defined $opt{tftp} ) {
-        if ( $opt{tftp} eq "" ) {
-            $opt{tftp} = hostname;
-        }
-        if (defined(
-                my $r = Cisco::SNMP::_resolv( $opt{tftp}, $opt{family} )
-            )
-          ) {
-            $opt{tftp} = $r;
-        } else {
-            print Cisco::SNMP->error . "\n";
-            exit 1;
-        }
+        $opt{tftp} = hostname if ( $opt{tftp} eq "" );
+        $opt{tftp} = _resolve( $opt{tftp}, $opt{family} );
 
         # startup-config / running-config
         if ( defined $opt{metric} ) {
-            if (   ( $opt{metric} !~ /^start(?:up)?(?:-config)?$/i )
-                && ( $opt{metric} !~ /^run(?:ning)?(?:-config)?$/i ) ) {
+            if (    ( $opt{metric} !~ /^start(?:up)?(?:-config)?$/i )
+                and ( $opt{metric} !~ /^run(?:ning)?(?:-config)?$/i ) ) {
                 print "$0: Unknown file - $opt{metric}\n";
                 exit 1;
             }
@@ -524,77 +513,39 @@ sub getSNMPOpts {
     }
 
     # Interface Info
-    if ( defined $opt{interface} && ( $opt{interface} ne "" ) ) {
+    if ( defined $opt{interface} and ( $opt{interface} ne "" ) ) {
 
-        # Admin up/down
-        if ( defined $opt{command} ) {
-            if (   ( uc( $opt{command} ) eq "UP" )
-                || ( uc( $opt{command} ) eq "DOWN" ) ) {
-
-                # DO NOTHING (Admin up/down)
-                # Ping packet size for proxy ping
-            } elsif ( $opt{command} =~ /^\d+$/ ) {
-                if (defined(
-                        my $r = Cisco::SNMP::_resolv(
-                            $opt{interface}, $opt{family}
-                        )
-                    )
-                  ) {
-                    $opt{interface} = $r;
-                } else {
-                    print Cisco::SNMP->error . "\n";
-                    exit 1;
-                }
-            } else {
+        # or IP address for proxy ping
+        if ( $opt{interface} !~ /^\d+$/ ) {
+            $opt{interface} = _resolve( $opt{interface}, $opt{family} );
+            if ( defined $opt{command} and ( $opt{command} !~ /^\d+$/ ) ) {
+                print "$0: not valid packet size - $opt{command}\n";
+                exit 1;
+            }
+        } elsif ( defined $opt{command} ) {
+            if (    ( uc( $opt{command} ) ne "UP" )
+                and ( uc( $opt{command} ) ne "DOWN" ) ) {
                 print "$0: not valid command - $opt{command}\n";
                 exit 1;
             }
-
-            # or IP address for proxy ping
-        } elsif ( $opt{interface} !~ /^\d+$/ ) {
-            if (defined(
-                    my $r
-                      = Cisco::SNMP::_resolv( $opt{interface}, $opt{family} )
-                )
-              ) {
-                $opt{interface} = $r;
-            } else {
-                print Cisco::SNMP->error . "\n";
-                exit 1;
-            }
         }
-
-        # fall through
-    }
-
-    # default: system MIB
-    if (( $opt{write} == 0 )
-        && !(
-               defined $opt{tftp}
-            || defined $opt{lines}
-            || defined $opt{interface}
-            || defined $opt{inventory}
-        )
-      ) {
-        $opt{metric} = read_mib_file();
     }
 }
 
-##################################################
 sub getTelnetOpts {
     if ( $opt{pass} eq "" ) {
         print "Password: ";
-        $opt{pass} = GetPass();
+        $opt{pass} = _GetPass();
     }
 
     if ( defined $opt{enable} ) {
         if ( $opt{enable} eq "" ) {
             print "Enable Password: ";
-            $opt{enable} = GetPass();
+            $opt{enable} = _GetPass();
         }
     }
 
-    sub GetPass {
+    sub _GetPass {
 
         # No echo password
         if ($HAVE_Term_ReadKey) { ReadMode(2) }
@@ -609,14 +560,14 @@ sub getTelnetOpts {
     if ( !$UNIQUE ) {
 
         # -c not provided - interactive mode
-        if ( !defined $opt{command} ) {
-            $commands[0] = "--STDIN--"
+        if ( not defined $opt{command} ) {
+            $commands[0] = "__STDIN__"
 
               # -c file
         } elsif ( -e $opt{command} ) {
-            open( my $CMDFILE, '<', $opt{command} );
-            @commands = <$CMDFILE>;
-            close($CMDFILE)
+            open( my $fh, '<', $opt{command} );
+            @commands = <$fh>;
+            close($fh)
 
               # -c command
         } else {
@@ -625,7 +576,6 @@ sub getTelnetOpts {
     }
 }
 
-##################################################
 sub getHosts {
     for my $host (@ARGV) {
 
@@ -636,20 +586,16 @@ sub getHosts {
             while (<$IN>) {
 
                 # skip blank lines and #comments
-                next if ( ( $_ =~ /^[\n\r]+$/ ) || ( $_ =~ /^#/ ) );
+                next if ( ( $_ =~ /^[\n\r]+$/ ) or ( $_ =~ /^#/ ) );
                 chomp $_;
 
                 # only get first 'arg' on each line (hostnames can't contain whitespace)
                 my ($h) = split /\s+/, $_;
 
                 # lookup host and skip if not found
-                if (defined(
-                        my $ret = Cisco::SNMP::_resolv( $h, $opt{family} )
-                    )
-                  ) {
+                if ( defined( my $ret = _resolve( $h, $opt{family}, 1 ) ) ) {
                     push @tHosts, $ret;
                 } else {
-                    print Cisco::SNMP->error . "\n";
                     next;
                 }
             }
@@ -662,13 +608,9 @@ sub getHosts {
         } else {
 
             # lookup host and skip if not found
-            if (defined(
-                    my $ret = Cisco::SNMP::_resolv( $host, $opt{family} )
-                )
-              ) {
+            if ( defined( my $ret = _resolve( $host, $opt{family}, 1 ) ) ) {
                 push @hosts, $ret;
             } else {
-                print Cisco::SNMP->error . "\n";
                 next;
             }
         }
@@ -676,51 +618,6 @@ sub getHosts {
     return @hosts;
 }
 
-##################################################
-sub read_mib_file {
-
-# (for /f %i in ('awk "/^[A-Za-z]/ {print $1}" \usr\share\snmp\mibs\*')
-#  do @eecho -n "%i " && snmptranslate -mALL -IR -On %i) 2>&1 |
-#  grep -v Unknown >> out.txt
-
-    my %MIB;
-
-    if ( !defined $opt{force} ) {
-        %MIB = (
-            '1.3.6.1.2.1.1'         => "System MIB",
-            '1.3.6.1.2.1.1.1.0'     => "sysDescr",
-            '1.3.6.1.2.1.1.2.0'     => "sysObjectID",
-            '1.3.6.1.2.1.1.3.0'     => "sysUpTimeInstance",
-            '1.3.6.1.2.1.1.4.0'     => "sysContact",
-            '1.3.6.1.2.1.1.5.0'     => "sysName",
-            '1.3.6.1.2.1.1.6.0'     => "sysLocation",
-            '1.3.6.1.2.1.1.7.0'     => "sysServices",
-            '1.3.6.1.2.1.1.8.0'     => "sysORLastChange",
-            '1.3.6.1.6.3.1.1.4.1.0' => "snmpTrapOID"
-        );
-    }
-
-    # MIB file
-    if ( defined $opt{metric} ) {
-        if ( -e $opt{metric} ) {
-            open( my $IN, '<', $opt{metric} );
-            while (<$IN>) {
-
-                # skip blank lines and comments (starting with #)
-                next if ( ( $_ =~ /^[\n\r]+$/ ) || ( $_ =~ /^#/ ) );
-                chomp $_;
-                my ( $o, $m ) = split /\t/, $_;
-                $MIB{$o} = $m;
-            }
-            close($IN);
-        } else {
-            print "$0: error reading MIB file - $opt{metric}\n";
-        }
-    }
-    return \%MIB;
-}
-
-##################################################
 sub getCMSession {
     my ( $t, $h ) = @_;
 
@@ -728,152 +625,118 @@ sub getCMSession {
         hostname => $h->{addr},
         family   => $h->{family},
     );
+    $params{port} = $h->{port} if ( defined $h->{port} );
 
-    if ( ( defined $opt{user} ) and ( defined $opt{pass} ) ) {
-        $params{version}      = 3;
-        $params{username}     = $opt{user};
-        $params{authpassword} = $opt{pass};
+    if ( defined $opt{user} ) {
 
-        my ( $auth, $priv ) = split /,/, $opt{snmp};
-        $params{authprotocol} = $auth;
+        # noAuthnoPriv
+        $params{version}  = 3;
+        $params{username} = $opt{user};
 
-        if ( defined $opt{enable} ) {
-            $params{privpassword} = $opt{enable};
-            if ( defined $priv ) {
-                $params{privprotocol} = $priv;
-            } else {
-                $params{privprotocol} = 'des';
+        if ( defined $opt{pass} ) {
+
+            # authNoPriv
+            $params{authpassword} = $opt{pass};
+
+            my ( $auth, $priv ) = split /,/, $opt{snmp};
+            $params{authprotocol} = $auth;
+
+            if ( defined $opt{enable} ) {
+
+                # authPriv
+                $params{privpassword} = $opt{enable};
+                $params{privprotocol} = $priv || 'des';
             }
         }
     } else {
         $params{community} = $opt{snmp};
     }
 
-    my $s = ( 'Cisco::SNMP::' . $t )->new( %params );
+    my $s = ( 'Cisco::SNMP::' . $t )->new(%params);
 
-    if ( !defined $s ) {
+    if ( not defined $s ) {
         printf $FORMAT . "$FAILED (" . Cisco::SNMP->error . ")", $h->{host};
         return;
     }
     return $s;
 }
 
-##################################################
 sub SNMP_Config {
 
     my ( $host, $file, $COPY ) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Config', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Config', $host ) ) ) {
         return;
     }
 
     # wr mem
+    my $conf;
     if ( defined $COPY ) {
         printf $FORMAT . "%s/running-config > %s/startup-config ",
           $host->{host}, $host->{host}, $host->{host};
-        if ( defined( my $conf = $session->config_copy() ) ) {
-            print "$SUCCESS\n";
-        } else {
-            print "$FAILED (" . Cisco::SNMP->error . ")\n";
-        }
+        $conf = $session->config_copy();
     } else {
-
-        # TFTP PUT (to device)
         if ( defined $opt{command} ) {
-            printf $FORMAT . "tftp://%s/$file > %s/$opt{metric} ",
-              $host->{host}, $opt{tftp}->{addr}, $host->{host};
-
-            # CatOS
-            if ( $opt{Catos} ) {
-                if (defined(
-                        my $conf = $session->config_copy(
-                            -tftp   => $opt{tftp}->{addr},
-                            -source => $file,
-                            -dest   => $opt{metric} -catos => 1
-                        )
-                    )
-                  ) {
-                    print "$SUCCESS\n";
-                } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
-                }
-
-                # IOS
-            } else {
-                if (defined(
-                        my $conf = $session->config_copy(
-                            -tftp   => $opt{tftp}->{addr},
-                            -family => $opt{tftp}->{family},
-                            -source => $file,
-                            -dest   => $opt{metric}
-                        )
-                    )
-                  ) {
-                    print "$SUCCESS\n";
-                } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
-                }
-            }
-
-            # TFTP GET (from device)
+            $conf = _config_copy(
+                $session, "tftp://%s/$file > %s/$opt{metric} ",
+                $host->{host}, $opt{tftp}->{addr},
+                $host->{host}, $file, $opt{metric}
+            );
         } else {
-            printf $FORMAT . "%s/$opt{metric} > tftp://%s/$file ",
-              $host->{host}, $host->{host}, $opt{tftp}->{addr};
-
-            # CatOS
-            if ( $opt{Catos} ) {
-                if (defined(
-                        my $conf = $session->config_copy(
-                            -tftp   => $opt{tftp}->{addr},
-                            -source => $opt{metric},
-                            -dest   => $file,
-                            -catos  => 1
-                        )
-                    )
-                  ) {
-                    print "$SUCCESS\n";
-                } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
-                }
-
-                # IOS
-            } else {
-                if (defined(
-                        my $conf = $session->config_copy(
-                            -tftp   => $opt{tftp}->{addr},
-                            -family => $opt{tftp}->{family},
-                            -source => $opt{metric},
-                            -dest   => $file
-                        )
-                    )
-                  ) {
-                    print "$SUCCESS\n";
-                } else {
-                    print "$FAILED (" . Cisco::SNMP->error . ")\n";
-                }
-            }
+            $conf = _config_copy(
+                $session, "%s/$opt{metric} > tftp://%s/$file ",
+                $host->{host}, $host->{host}, $opt{tftp}->{addr},
+                $opt{metric}, $file
+            );
         }
+    }
+
+    sub _config_copy {
+        my ( $session, $string, $arg1, $arg2, $arg3, $src, $dst ) = @_;
+
+        printf $FORMAT . $string, $arg1, $arg2, $arg3;
+
+        my %params = (
+            -tftp   => $opt{tftp}->{addr},
+            -source => $src,
+            -dest   => $dst
+        );
+
+        my $conf;
+
+        # CatOS
+        if ( $opt{Catos} ) {
+            $conf = $session->config_copy( %params, -catos => 1 );
+
+            # IOS
+        } else {
+            $conf = $session->config_copy( %params,
+                -family => $opt{tftp}->{family}, );
+        }
+        return $conf;
+    }
+
+    if ( defined $conf ) {
+        print "$SUCCESS\n";
+    } else {
+        print "$FAILED (" . Cisco::SNMP->error . ")\n";
     }
 
     $session->close();
 }
 
-##################################################
 sub SNMP_LineMessage {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Line', $host ) ) ) {
         return;
     }
 
     my %params = ( message => $opt{metric} );
-
-    if ( $opt{lines} ne '' ) {
-        $params{lines} = $opt{lines};
-    }
+    $params{lines} = $opt{lines} if ( $opt{lines} ne '' );
 
     printf $FORMAT, $host->{host};
     if ( defined( my $response = $session->line_message(%params) ) ) {
@@ -885,13 +748,12 @@ sub SNMP_LineMessage {
     $session->close();
 }
 
-##################################################
 sub SNMP_LineInfo {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Line', $host ) ) ) {
         return;
     }
 
@@ -935,13 +797,12 @@ sub SNMP_LineInfo {
     $session->close();
 }
 
-##################################################
 sub SNMP_LineClear {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Line', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Line', $host ) ) ) {
         return;
     }
 
@@ -955,23 +816,28 @@ sub SNMP_LineClear {
     $session->close();
 }
 
-##################################################
 sub SNMP_IntfInfo {
 
     my ( $host, $log ) = @_;
 
     my $sessip;
     my $sessif;
-    if ( !defined( $sessif = getCMSession( 'Interface', $host ) ) ) {
+    if ( not defined( $sessif = getCMSession( 'Interface', $host ) ) ) {
         return;
     }
-    if ( !defined( $sessip = getCMSession( 'IP', $host ) ) ) {
+    if ( not defined( $sessip = getCMSession( 'IP', $host ) ) ) {
         return;
     }
 
     my @mets;
     if ( defined $opt{metric} ) {
-        @mets = split /,/, $opt{metric};
+
+        # ifindex in IP-MIB is same as index in Interface MIB but below
+        # we don't distinguish so easier to fix now than check later
+        for ( split /,/, $opt{metric} ) {
+            $_ = 'index' if (/ifindex/i);
+            push @mets, $_;
+        }
     } else {
         push @mets, "Index", "Description", "AdminStatus", "OperStatus";
     }
@@ -981,7 +847,7 @@ sub SNMP_IntfInfo {
     $ipOIDS{lc($_)} = $_ for ( $sessip->addrOIDs() );
     %OIDS = ( %ifOIDS, %ipOIDS );
 
-    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+    if ( not defined( verifyMetrics( \@mets, \%OIDS ) ) ) {
         return;
     }
 
@@ -1064,13 +930,12 @@ sub SNMP_IntfInfo {
     $sessip->close();
 }
 
-##################################################
 sub SNMP_IntfUpDown {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Interface', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Interface', $host ) ) ) {
         return;
     }
 
@@ -1091,18 +956,17 @@ sub SNMP_IntfUpDown {
     $session->close();
 }
 
-##################################################
 sub SNMP_CPUUtil {
 
     my ( $host, $log ) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'CPU', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'CPU', $host ) ) ) {
         return;
     }
 
     my $response;
-    if ( !defined( $response = $session->cpu_info() ) ) {
+    if ( not defined( $response = $session->cpu_info() ) ) {
         return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
 
@@ -1198,18 +1062,17 @@ sub SNMP_CPUUtil {
     $session->close();
 }
 
-##################################################
 sub SNMP_MemUtil {
 
     my ( $host, $log ) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Memory', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Memory', $host ) ) ) {
         return;
     }
 
     my $response;
-    if ( !defined( $response = $session->memory_info() ) ) {
+    if ( not defined( $response = $session->memory_info() ) ) {
         return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
 
@@ -1293,13 +1156,12 @@ sub SNMP_MemUtil {
     $session->close();
 }
 
-##################################################
 sub SNMP_IntfUtil {
 
     my ( $host, $log ) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Interface', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Interface', $host ) ) ) {
         return;
     }
 
@@ -1312,13 +1174,13 @@ sub SNMP_IntfUtil {
     my %OIDS;
     $OIDS{lc($_)} = $_ for ( $session->ifMetricUserOIDs );
 
-    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+    if ( not defined( verifyMetrics( \@mets, \%OIDS ) ) ) {
         return;
     }
 
     my $response;
-    if ( !defined( $response = $session->interface_info( $opt{interface} ) ) )
-    {
+    if (not
+        defined( $response = $session->interface_info( $opt{interface} ) ) ) {
         return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
     my $ifSpeed = $response->ifSpeed( $opt{interface} );
@@ -1435,19 +1297,18 @@ sub SNMP_IntfUtil {
     $session->close();
 }
 
-##################################################
 sub SNMP_ProxyPing {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'ProxyPing', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'ProxyPing', $host ) ) ) {
         return;
     }
 
     my $count = 1;
     if ( defined $opt{repeat} ) {
-        if ( ( $opt{repeat} > 0 ) && ( $opt{repeat} < 11 ) ) {
+        if ( ( $opt{repeat} > 0 ) and ( $opt{repeat} < 11 ) ) {
             $count = $opt{repeat};
         }
     }
@@ -1455,7 +1316,7 @@ sub SNMP_ProxyPing {
     my $size = 64;
     if ( defined $opt{command} ) {
         if ( $opt{command} =~ /^\d+$/ ) {
-            if ( ( $opt{command} > 0 ) && ( $opt{command} < 65536 ) ) {
+            if ( ( $opt{command} > 0 ) and ( $opt{command} < 65536 ) ) {
                 $size = $opt{command};
             }
         }
@@ -1489,9 +1350,7 @@ sub SNMP_ProxyPing {
         size   => $size,
         wait   => $opt{Wait}
     );
-    if ( defined $opt{metric} ) {
-        $params{vrf} = $opt{metric};
-    }
+    $params{vrf} = $opt{metric} if ( defined $opt{metric} );
 
     while ( $j != $opt{replay} ) {
 
@@ -1521,9 +1380,7 @@ sub SNMP_ProxyPing {
             $received += $pings->ppReceived();
         } else {
             printf $FORMAT . "%s\n", $host->{host}, Cisco::SNMP->error;
-            if ( Cisco::SNMP->error eq "NOT SUPPORTED" ) {
-                last;
-            }
+            last;
         }
         $j++;
     }
@@ -1543,13 +1400,12 @@ sub SNMP_ProxyPing {
     }
 }
 
-##################################################
 sub SNMP_Inventory {
 
     my ( $host, $log ) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'Entity', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'Entity', $host ) ) ) {
         return;
     }
 
@@ -1564,7 +1420,7 @@ sub SNMP_Inventory {
     my %OIDS;
     $OIDS{lc($_)} = $_ for ( $session->entityOIDs );
 
-    if ( !defined( my $r = verifyMetrics( \@mets, \%OIDS ) ) ) {
+    if ( not defined( verifyMetrics( \@mets, \%OIDS ) ) ) {
         return;
     }
 
@@ -1625,13 +1481,12 @@ sub SNMP_Inventory {
     $session->close();
 }
 
-##################################################
 sub SNMP_GetInfo {
 
     my ($host) = @_;
 
     my $session;
-    if ( !defined( $session = getCMSession( 'System', $host ) ) ) {
+    if ( not defined( $session = getCMSession( 'System', $host ) ) ) {
         return;
     }
 
@@ -1661,7 +1516,21 @@ sub SNMP_GetInfo {
     }
 }
 
-##################################################
+sub _printRr {
+    my ( $stopReplay, $i, $stopRepeat, $j ) = @_;
+
+    # Print replay/repeat numbers if we're looping
+    if ( ( $opt{repeat} != 1 ) or ( $opt{replay} != 1 ) ) {
+        printf "[%s%s] ",
+          ( !$stopReplay and ( $opt{replay} != 1 ) )
+          ? "R" . ( $i + 1 )
+          : "",
+          ( !$stopRepeat and ( $opt{repeat} != 1 ) )
+          ? "r" . ( $j + 1 )
+          : "";
+    }
+}
+
 sub TELNET_Mode {
 
     my ( $host, $cmds ) = @_;
@@ -1671,8 +1540,12 @@ sub TELNET_Mode {
 
     for my $h ( 0 .. $#{$host} ) {
 
-        # Make sure port is acceptable
-        if ( !defined $host->[$h]->{port} ) {
+        # assume Telnet, SSH2 if -S
+        my $transport = 'Telnet';
+           $transport = 'SSH2' if ( defined $opt{ssh} );
+
+        # Make sure port is assigned
+        if ( not defined $host->[$h]->{port} ) {
             if ( defined $opt{ssh} ) {
                 $host->[$h]->{port} = 22;
             } else {
@@ -1680,51 +1553,42 @@ sub TELNET_Mode {
             }
         }
 
+        # override assigned transport if default port is specified
+        if ( $host->[$h]->{port} == 22 ) { $transport = 'SSH2'; }
+        if ( $host->[$h]->{port} == 23 ) { $transport = 'Telnet'; }
+
         my $socket;
+        my %params = (
+            PeerHost => $host->[$h]->{addr},
+            PeerPort => $host->[$h]->{port},
+        );
         if ($HAVE_IO_Socket_IP) {
-            $socket = IO::Socket::IP->new(
-                PeerHost => $host->[$h]->{addr},
-                PeerPort => $host->[$h]->{port},
-                Family   => $host->[$h]->{family}
-            );
+            $socket = IO::Socket::IP->new( %params,
+                Family => $host->[$h]->{family} );
         } else {
-            $socket = IO::Socket::INET->new(
-                PeerHost => $host->[$h]->{addr},
-                PeerPort => $host->[$h]->{port}
-            );
+            $socket = IO::Socket::INET->new(%params);
         }
 
         if ( !$socket ) {
             printf $FORMAT. "$FAILED (No connect)\n", $host->[$h]->{host};
-            if ( defined $opt{force} ) {
-                next;
-            } else {
-                return;
-            }
+            ( defined $opt{force} ) ? next : return;
         }
 
-        my $session;
-        if ( defined $opt{ssh} ) {
-            $session = Net::SSH2::Cisco->new(
-                fhopen  => $socket,
-                Errmode => 'return',
-                Prompt  => $PROMPT
-            );
+        if (defined(
+                my $session = ( 'Net::' . $transport . '::Cisco' )->new(
+                    fhopen  => $socket,
+                    Errmode => 'return',
+                    Prompt  => $PROMPT
+                )
+            )
+          ) {
+            $sessions{$host->[$h]->{host}} = $session;
         } else {
-            $session = Net::Telnet::Cisco->new(
-                fhopen  => $socket,
-                Errmode => 'return',
-                Prompt  => $PROMPT
-            );
-        }
-
-        if ( !$session ) {
             printf $FORMAT. "$FAILED (No session)\n", $host->[$h]->{host};
-            if ( !defined $opt{force} ) {
+            if ( not defined $opt{force} ) {
                 return;
             }
         }
-        $sessions{$host->[$h]->{host}} = $session;
     }
 
     my @hosts;
@@ -1742,7 +1606,7 @@ sub TELNET_Mode {
             $sessions{$host->[$h]->{host}}
               ->max_buffer_length( 5 * 1024 * 1024 );
 
-            if ( ( $opt{write} == 1 ) || ( $opt{write} == 3 ) ) {
+            if ( ( $opt{write} == 1 ) or ( $opt{write} == 3 ) ) {
                 $log = get_log_file( $host->[$h]->{host}, $opt{dir}, undef );
                 $sessions{$host->[$h]->{host}}->input_log($log);
                 printf $FORMAT . "Writing log $log $SUCCESS\n",
@@ -1776,51 +1640,33 @@ sub TELNET_Mode {
         }
 
         # Terminal Server?
-        if ( $opt{term} and !defined $opt{ssh} ) {
+        if ( $opt{term} and not defined $opt{ssh} ) {
             $result = $sessions{$host->[$h]->{host}}->cmd("\n")
               for ( 1 .. $opt{term} );
         }
 
         # login
+        my %params = ( Password => $opt{pass} );
         if ( ( defined $opt{user} ) or ( defined $opt{ssh} ) ) {
+            $params{Name} = $opt{user};
+        }
 
-            # with Username
-            if (!(  $sessions{$host->[$h]->{host}}
-                    ->login( Name => $opt{user}, Password => $opt{pass} )
-                )
-              ) {
-                printf $FORMAT. "$FAILED (Username login)\n",
-                  $host->[$h]->{host};
-                if ( defined $opt{force} ) {
-                    $sessions{$host->[$h]->{host}}->close;
-                    $sessions{$host->[$h]->{host}} = undef;
-                } else {
-                    $sessions{$_}->close for ( keys(%sessions) );
-                    return;
-                }
-            }
-        } else {
-
-            # without Username
-            if (!(  $sessions{$host->[$h]->{host}}
-                    ->login( Password => $opt{pass} )
-                )
-              ) {
-                printf $FORMAT. "$FAILED (login)\n", $host->[$h]->{host};
-                if ( defined $opt{force} ) {
-                    $sessions{$host->[$h]->{host}}->close;
-                    $sessions{$host->[$h]->{host}} = undef;
-                } else {
-                    $sessions{$_}->close for ( keys(%sessions) );
-                    return;
-                }
+        if ( !$sessions{$host->[$h]->{host}}->login(%params) ) {
+            printf $FORMAT. "$FAILED (%slogin)\n",
+              $host->[$h]->{host},
+              ( defined $opt{user} ) ? "Username " : "";
+            if ( defined $opt{force} ) {
+                $sessions{$host->[$h]->{host}}->close;
+                $sessions{$host->[$h]->{host}} = undef;
+            } else {
+                $sessions{$_}->close for ( keys(%sessions) );
+                return;
             }
         }
 
         # enable if provided
         if ( defined $opt{enable} ) {
-            if ( !( $sessions{$host->[$h]->{host}}->enable( $opt{enable} ) ) )
-            {
+            if ( !$sessions{$host->[$h]->{host}}->enable( $opt{enable} ) ) {
                 printf $FORMAT. "$FAILED (enable)\n", $host->[$h]->{host};
                 if ( defined $opt{force} ) {
                     $sessions{$host->[$h]->{host}}->close;
@@ -1834,12 +1680,9 @@ sub TELNET_Mode {
 
         # turn off paging by default for CatOS or IOS
         if ( defined $sessions{$host->[$h]->{host}} ) {
-            if ( $opt{Catos} ) {
-                $result = $sessions{$host->[$h]->{host}}->cmd('set length 0');
-            } else {
-                $result
-                  = $sessions{$host->[$h]->{host}}->cmd('terminal length 0');
-            }
+            my $pager = 'terminal length 0';
+               $pager = 'set length 0' if ( $opt{Catos} );
+            $result = $sessions{$host->[$h]->{host}}->cmd($pager);
         }
     }
 
@@ -1861,7 +1704,7 @@ sub TELNET_Mode {
 
     # apply commands
     # interactive mode
-    if ( defined $cmds->[0] && ( $cmds->[0] eq "--STDIN--" ) ) {
+    if ( defined $cmds->[0] and ( $cmds->[0] eq "__STDIN__" ) ) {
 
         my $cmdPrompt
           = ( $#{$host} == 0 )
@@ -1883,9 +1726,10 @@ sub TELNET_Mode {
             chomp $cmd if defined $cmd;
 
             my $DONE = 0;
-# Sort by hostname
-#           for my $h (sort(keys(%sessions))) {
-# Sort by order entered on command line
+
+            # Sort by hostname
+            #           for my $h (sort(keys(%sessions))) {
+            # Sort by order entered on command line
             for my $h ( 0 .. $#{$host} ) {
                 $sessions{$host->[$h]->{host}}->errmode(
                     sub {
@@ -1948,16 +1792,7 @@ sub TELNET_Mode {
                     chomp $cmd;
                     printf $FORMAT, $host->[0]->{host};
 
-                    # Print replay/repeat numbers if we're looping
-                    if ( ( $opt{repeat} != 1 ) || ( $opt{replay} != 1 ) ) {
-                        printf "[%s%s] ",
-                          ( ( !$stopReplay ) && ( $opt{replay} != 1 ) )
-                          ? "R" . ( $i + 1 )
-                          : "",
-                          ( ( !$stopRepeat ) && ( $opt{repeat} != 1 ) )
-                          ? "r" . ( $j + 1 )
-                          : "";
-                    }
+                    _printRr( $stopReplay, $i, $stopRepeat, $j );
                     print "$cmd ";
 
                     my $ERROR = 0;
@@ -1999,7 +1834,6 @@ sub TELNET_Mode {
     }
 }
 
-##################################################
 sub PING_Mode {
 
     my ($host) = @_;
@@ -2023,10 +1857,10 @@ sub PING_Mode {
     $opt{metric} = uc( $opt{metric} );
 
     my $interfaces = [0];
-    if (   defined $opt{interface}
-        && ( $opt{interface} ne "" )
-        && ( $opt{metric} !~ /^icmp$/i ) ) {
-        if (!defined(
+    if (    defined $opt{interface}
+        and ( $opt{interface} ne "" )
+        and ( $opt{metric} !~ /^icmp$/i ) ) {
+        if (not defined(
                 $interfaces = Cisco::SNMP::_get_range( $opt{interface} )
             )
           ) {
@@ -2074,16 +1908,7 @@ sub PING_Mode {
             while ( $j != $opt{repeat} ) {
                 printf $FORMAT, $host->{host};
 
-                # Print replay/repeat numbers if looping
-                if ( ( $opt{repeat} != 1 ) || ( $opt{replay} != 1 ) ) {
-                    printf "[%s%s] ",
-                      ( ( !$stopReplay ) && ( $opt{replay} != 1 ) )
-                      ? "R" . ( $i + 1 )
-                      : "",
-                      ( ( !$stopRepeat ) && ( $opt{repeat} != 1 ) )
-                      ? "r" . ( $j + 1 )
-                      : "";
-                }
+                _printRr( $stopReplay, $i, $stopRepeat, $j );
                 printf "%s[:%5i] ", $opt{metric}, $port;
 
                 # Execute Ping
@@ -2106,14 +1931,13 @@ sub PING_Mode {
     $p->close();
 }
 
-##################################################
 sub verifyMetrics {
     my ( $mets, $OIDS ) = @_;
 
     my @tMets;
     for ( @{$mets} ) {
-        if ( !defined $OIDS->{lc($_)} ) {
-            if ( !defined $opt{force} ) {
+        if ( not defined $OIDS->{lc($_)} ) {
+            if ( not defined $opt{force} ) {
                 print "$0: Unknown field `$_'";
                 return undef;
             }
@@ -2126,7 +1950,6 @@ sub verifyMetrics {
     return 1;
 }
 
-##################################################
 sub get_log_file {
 
     my ( $host, $dir, $option ) = @_;
@@ -2148,7 +1971,6 @@ sub get_log_file {
     return $log;
 }
 
-##################################################
 sub open_log_file {
     my ($log) = @_;
 
@@ -2169,7 +1991,6 @@ sub open_log_file {
     return $OUT;
 }
 
-##################################################
 sub open_log_file_keys {
     my ( $log, $mets, $OIDS ) = @_;
 
@@ -2196,7 +2017,6 @@ sub open_log_file_keys {
     return $OUT;
 }
 
-##################################################
 sub yyyymmddhhmmss {
     my @time = localtime();
     return (
@@ -2212,7 +2032,6 @@ sub yyyymmddhhmmss {
     );
 }
 
-##################################################
 sub PASSWORD_Mode {
 
     my $result = 0;
@@ -2226,7 +2045,7 @@ sub PASSWORD_Mode {
 
                 # Standard Cisco salt length is 4, but testing shows it accepts from 1 to 7 inclusive
                 if (   ( length( $opt{snmp} ) > 7 )
-                    || ( length( $opt{snmp} ) < 1 ) ) {
+                    or ( length( $opt{snmp} ) < 1 ) ) {
                     $opt{snmp} = 'crap';
                 }
                 printf "%s\n", unix_md5_crypt( $opt{Pass}, $opt{snmp} );
@@ -2238,16 +2057,9 @@ sub PASSWORD_Mode {
 
             # Type 7
         } else {
-            if ((   $result = Cisco::SNMP::Password->password_encrypt(
-                        $opt{Pass}, $opt{enable}
-                    )
-                ) == 0
-              ) {
-                printf "$0: %s\n", Cisco::SNMP->error;
-            } else {
-                for my $p ( @{$result} ) {
-                    print "$p\n";
-                }
+            $opt{enable} = undef if ( $opt{enable} eq '' );
+            if ( my @passwd = cisco_encrypt( $opt{Pass}, $opt{enable} ) ) {
+                print "$_\n" for (@passwd);
             }
             return $SUCCESS;
         }
@@ -2261,14 +2073,16 @@ sub PASSWORD_Mode {
             my $linecnt = 1;
             while (<$IN>) {
                 chomp $_;
+
+                my $filter;
                 if ( defined $opt{dir} ) {
-                    if ( $_ =~ $PASSWORD5 ) {
-                        push @passwords, "($linecnt) " . $_;
-                    }
+                    $filter = $PASSWORD5;
                 } else {
-                    if ( $_ =~ $PASSWORD7 ) {
-                        push @passwords, "($linecnt) " . $_;
-                    }
+                    $filter = $PASSWORD7;
+                }
+
+                if ( $_ =~ $filter ) {
+                    push @passwords, "($linecnt) " . $_;
                 }
                 $linecnt++;
             }
@@ -2279,7 +2093,25 @@ sub PASSWORD_Mode {
             push @passwords, $opt{Pass};
         }
 
+        # -d File
+        my @dictionary;
+        if ( defined $opt{dir} ) {
+            if ( -e $opt{dir} ) {
+                open( my $DICT, '<', $opt{dir} );
+                @dictionary = <$DICT>;
+                close($DICT)
+
+                  # -d word
+            } else {
+                push @dictionary, $opt{dir};
+            }
+        }
+
         for my $pass (@passwords) {
+
+            if ( -e $opt{Pass} ) {
+                print "$opt{Pass}:$pass\n";
+            }
 
             # $pass is a password if it was a password originally.
             # $pass is a line from a router config if password was a file so we
@@ -2294,22 +2126,6 @@ sub PASSWORD_Mode {
                     $salt =~ s/^\$1\$//;
                     $salt =~ s/^(.*)\$.*$/$1/;
                     $salt = substr( $salt, 0, 8 );
-
-                    # -d File
-                    my @dictionary;
-                    if ( -e $opt{dir} ) {
-                        open( my $DICT, '<', $opt{dir} );
-                        @dictionary = <$DICT>;
-                        close($DICT)
-
-                          # -d word
-                    } else {
-                        push @dictionary, $opt{dir};
-                    }
-
-                    if ( -e $opt{Pass} ) {
-                        print "$opt{Pass}:$pass\n";
-                    }
 
                     for my $word (@dictionary) {
                         chomp $word;
@@ -2332,16 +2148,7 @@ sub PASSWORD_Mode {
 
                 # Type 7
             } else {
-                if ( -e $opt{Pass} ) {
-                    print "$opt{Pass}:$pass\n";
-                }
-                if ((   $result = Cisco::SNMP::Password->password_decrypt(
-                            $parts[$#parts]
-                        )
-                    ) eq 0
-                  ) {
-                    print $FAILED . " (" . Cisco::SNMP->error . ")";
-                } else {
+                if ( $result = cisco_decrypt( $parts[$#parts] ) ) {
                     print "$result\n";
                 }
                 print "\n";
@@ -2351,15 +2158,7 @@ sub PASSWORD_Mode {
     }
 }
 
-##################################################
-# End Subroutines
-##################################################
-
 __END__
-
-##################################################
-# Start POD
-##################################################
 
 =head1 NAME
 
@@ -2428,8 +2227,22 @@ inserted after the C<'/(?m:^>  The rest of the line is left as is.
                       IP's of devices, 1 per line.  Blank lines and
                       lines starting with hash (#) are ignored.
 
-                      NOTE:  Not required and ignored for Password 
-                             and/or Server Mode.
+                      NOTE:  Not required / ignored in Password Mode.
+
+B<NOTE:>  Hosts can contain an optional port if the defaults are 
+not sufficient.  This may be the case with Quagga or terminal 
+servers.  Use:
+
+    host:port
+
+Port is an integer number: 1 E<lt>= port E<lt>= 65535
+
+For example:
+
+    hostname:2601              # hostname with port
+    10.1.1.1:80                # IPv4 Address with port
+    [2001:db8:100::1]:2001     # IPv6 Address with port
+                               # NOTE: brackets as per RFC 2732
 
 =head1 OPTIONS
 
@@ -2446,7 +2259,7 @@ inserted after the C<'/(?m:^>  The rest of the line is left as is.
                       during a single run so do not mix and match IOS
                       and CatOS hosts on a single command line or input 
                       host file.  Effects terminal length setting in 
-                      Telnet mode and OID in SNMP mode (TFTP).
+                      Telnet mode and OID in SNMP mode.
 
  -F #                 Output line header format.  Can use 'printf' 
  --format             formatting commands.
@@ -2473,12 +2286,12 @@ To activate B<Password Mode>, use the -P option.
                       argument to -P. [Requires Crypt::PasswdMD5]
 
  -e [#]               Encrypt the provided argument to -P.  Use double
- --encrypt            quotes to delimit strings with spaces.  Outputs all 
-                      possible Cisco type 7 encryptions by default.  
-                      Optional number outputs the single password 
-                      encrypted with the provided index; valid values are 
-                      0 - 52 inclusive.  Non-number or out of range value 
-                      produces password encrypted with a random index.
+ --encrypt            quotes to delimit strings with spaces.  Optional 
+                      number outputs the single password encrypted with 
+                      the provided index; valid values are 0 - 52 
+                      inclusive.  Non-number outputs all possible 
+                      encryptions.  No option outputs encryption with a 
+                      random index.
 
  -s [salt]            If specified, encrypt -P argument to MD5 (enable 
  --salt               secret) password.  Salt must be:
@@ -2491,27 +2304,33 @@ To activate B<SNMP Mode>, use the -s option.
 
  -s community |       SNMP community string.  Can be read-only or 
    authprot[,privprot]read-write depending on the operation to be 
- --snmp               performed.  If -u and -p (see below) are 
+ --snmp               performed.  If -u [and -p] (see below) are 
                       specified, this is the SNMP authentication 
-                      protocol; either 'md5' or 'sha' optionally 
-                      followed by ',' and the privacy protocol 'des' 
-                      (default, or not specified), 'aes' or '3des'.
+                      protocol.  Use:
+                        default = noAuthnoPriv
+                      For authNoPriv or authPriv modes, use:
+                        md5 = MD5 authentication
+                        sha = SHA-1 authentication
+                      followed by an optional ',' and the privacy 
+                      protocol if authPriv mode; use:
+                        des = DES encryption (default)
+                        aes = AES encryption
 
  -u username          SNMP v3 username.
  --username
 
  -p authpass          SNMP v3 authentication password.
- --password
+ --password           Implies authNoPriv or authPriv modes.
 
  -e privpass          SNMP v3 privacy / encryption password.
- --encrypt
+ --encrypt            Implies authPriv mode.
 
  -t [IP_Addr]         SNMP get/put config via TFTP.
  --tftp               DEFAULT:  localhost.
 
      -c file.confg |  File (with optional path) for TFTP Put.
         path/         Directory of unique files for TFTP Put.  Files in
-     --command        directory are <host>.confg.
+     --config         directory are <host>.confg.
 
      -d <dir>         Save directory for TFTP Get.  
      --directory      DEFAULT:  (or not specified) [TFTP root].
@@ -2555,7 +2374,8 @@ To activate B<SNMP Mode>, use the -s option.
                                   DEFAULT:  (or not specified) [none].
 
                         -r #      Number of pings per iteration.
-                        --repeat  DEFAULT:  (or not specified) 1.
+                        --repeat    1 <= r <= 10
+                                  DEFAULT:  (or not specified) 1.
 
                         -R #      Count of iterations.
                         --Replay  DEFAULT:  (or not specified) 1.
@@ -2623,35 +2443,14 @@ To activate B<SNMP Mode>, use the -s option.
 If none of the above options are provided other than C<-s>, 
 perform SNMP walk of the System MIB (by default).
 
-     -c <oid>         OID to walk, in dotted decimal format.
-     --command
-
-     -f               Do NOT load provided translations for System 
-     --force          MIB.
-
-     -m file.txt      Tab-delimited MIB file with 2 columns:
-     --mib            <dotted OID> <TAB> <Text Translation Name>
-
 =head2 TELNET SSH MODE
 
 To activate B<Telnet Mode>, use the -p option without -s.
 
-B<NOTE:>  Hosts can contain an optional port if the default (23) is 
-not sufficient.  This may be the case with Quagga or terminal 
-servers.  Use:
-
-    host:port
-
-Port is an integer number: 0 E<lt> port E<lt> 65536
-
-For example:
-
-    hostname:2601              # hostname with port
-    10.1.1.1:80                # IPv4 Address with port
-    [2001:db8:100::1]:2001     # IPv6 Address with port
-
- -S                   Use SSH instead of Telnet.
- -ssh
+ -S                   Use SSH instead of Telnet.  Works for unknown or 
+ --ssh                not specifically provided ports.  Using:
+                        host:22 = always SSH
+                        host:23 = always Telnet
 
  -p password          Telnet login password.
  --password           To prompt for password with no echo (this 

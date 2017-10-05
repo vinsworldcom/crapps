@@ -679,23 +679,29 @@ sub SNMP_Config {
     } else {
         if ( defined $opt{command} ) {
             $conf = _config_copy(
-                $session, "tftp://%s/$file > %s/$opt{metric} ",
-                $host->{host}, $opt{tftp}->{addr},
-                $host->{host}, $file, $opt{metric}
+                $session, $host->{host}, 
+                sprintf( "tftp://%s/$file > %s/$opt{metric} ",
+                  $opt{tftp}->{addr},
+                  $host->{host} 
+                ), 
+                $file, $opt{metric}
             );
         } else {
             $conf = _config_copy(
-                $session, "%s/$opt{metric} > tftp://%s/$file ",
-                $host->{host}, $host->{host}, $opt{tftp}->{addr},
+                $session, $host->{host}, 
+                sprintf( "%s/$opt{metric} > tftp://%s/$file ",
+                  $host->{host}, 
+                  $opt{tftp}->{addr}
+                ),
                 $opt{metric}, $file
             );
         }
     }
 
     sub _config_copy {
-        my ( $session, $string, $arg1, $arg2, $arg3, $src, $dst ) = @_;
+        my ( $session, $host, $string, $src, $dst ) = @_;
 
-        printf $FORMAT . $string, $arg1, $arg2, $arg3;
+        printf $FORMAT . $string, $host;
 
         my %params = (
             -tftp   => $opt{tftp}->{addr},
@@ -712,7 +718,7 @@ sub SNMP_Config {
             # IOS
         } else {
             $conf = $session->config_copy( %params,
-                -family => $opt{tftp}->{family}, );
+                -family => $opt{tftp}->{family} );
         }
         return $conf;
     }

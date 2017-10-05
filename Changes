@@ -1,10 +1,9 @@
 CRAPPS - Cisco Router Action Performing Perl Script
 Author:  Michael J. Vincent
 
-Version 3.02 - 09 JUL 2015
+Version 3.1 - 25 SEP 2017
 
-Enabled SSH support.  Requires Net::SSH2 and Net::SSH2::Cisco; the latter 
-only available on GitHub.
+Code refactored.
 
 
 Version 3.01 - 22 JUN 2015
@@ -36,12 +35,6 @@ Version 2.11 - 5 OCT 2012
 
 IPv6 support with -6, -4 options.  Everything but Net::Ping supports 
 IPv6 now.
-
-
-Version 2.08 - 24 FEB 2012
-
-Updated version check for non-required modules.  Allowed multiple 
--metric arguments (comma-separated) for SNMP interface queries.
 
 
 Version 2.08 - 24 FEB 2012

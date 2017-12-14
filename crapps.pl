@@ -6,7 +6,7 @@
 
 use vars qw($VERSION);
 
-$VERSION = "3.1 - 25 SEP 2017";
+$VERSION = "3.2 - 13 DEC 2017";
 
 use strict;
 use warnings;
@@ -81,6 +81,7 @@ my ( $opt_help, $opt_man, $opt_versions );
 
 $opt{beep}   = 0;
 $opt{Catos}  = 0;
+$opt{force}  = 0;
 $opt{header} = 1;
 $opt{write}  = 0;
 $opt{Wait}   = 0;
@@ -1577,7 +1578,7 @@ sub TELNET_Mode {
 
         if ( !$socket ) {
             printf $FORMAT. "$FAILED (No connect)\n", $host->[$h]->{host};
-            ( defined $opt{force} ) ? next : return;
+            ( $opt{force} ) ? next : return;
         }
 
         if (defined(
@@ -1591,7 +1592,7 @@ sub TELNET_Mode {
             $sessions{$host->[$h]->{host}} = $session;
         } else {
             printf $FORMAT. "$FAILED (No session)\n", $host->[$h]->{host};
-            if ( not defined $opt{force} ) {
+            if ( not $opt{force} ) {
                 return;
             }
         }
@@ -1661,7 +1662,7 @@ sub TELNET_Mode {
             printf $FORMAT. "$FAILED (%slogin)\n",
               $host->[$h]->{host},
               ( defined $opt{user} ) ? "Username " : "";
-            if ( defined $opt{force} ) {
+            if ( $opt{force} ) {
                 $sessions{$host->[$h]->{host}}->close;
                 $sessions{$host->[$h]->{host}} = undef;
             } else {
@@ -1674,7 +1675,7 @@ sub TELNET_Mode {
         if ( defined $opt{enable} ) {
             if ( !$sessions{$host->[$h]->{host}}->enable( $opt{enable} ) ) {
                 printf $FORMAT. "$FAILED (enable)\n", $host->[$h]->{host};
-                if ( defined $opt{force} ) {
+                if ( $opt{force} ) {
                     $sessions{$host->[$h]->{host}}->close;
                     $sessions{$host->[$h]->{host}} = undef;
                 } else {
@@ -1805,7 +1806,7 @@ sub TELNET_Mode {
                     $session->errmode(
                         sub {
                             if ( !$session->eof() ) {
-                                if ( defined $opt{force} ) {
+                                if ( $opt{force} ) {
                                     print $FAILED;
                                 } else {
                                     $ERROR = 1;
@@ -1943,7 +1944,7 @@ sub verifyMetrics {
     my @tMets;
     for ( @{$mets} ) {
         if ( not defined $OIDS->{lc($_)} ) {
-            if ( not defined $opt{force} ) {
+            if ( not $opt{force} ) {
                 print "$0: Unknown field `$_'";
                 return undef;
             }

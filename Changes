@@ -1,6 +1,11 @@
 CRAPPS - Cisco Router Action Performing Perl Script
 Author:  Michael J. Vincent
 
+Version 3.2 - 13 DEC 2017
+
+Changed -f to flag instead of defined.
+
+
 Version 3.1 - 25 SEP 2017
 
 Code refactored.

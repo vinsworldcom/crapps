@@ -44,7 +44,7 @@ DEPENDENCIES
 
   The following will probably require extra download:
 
-    Net::SNMP            (required by Cisco::Management)
+    Net::SNMP            (required by Cisco::SNMP)
     Cisco::SNMP        *
     Net::Telnet        # (required by Net::Telnet::Cisco)
     Net::Telnet::Cisco

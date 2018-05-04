@@ -48,9 +48,10 @@ DEPENDENCIES
     Net::SNMP            (required by Cisco::SNMP)
     Cisco::SNMP        *
     Net::Telnet        # (required by Net::Telnet::Cisco)
-    Net::Telnet::Cisco
+    Net::Telnet::Cisco *
     Net::SSH2          ?# (required by Net::SSH2::Cisco)
     Net::SSH2::Cisco   ?*
+    Crypt::Cisco       *
     Crypt::PasswdMD5   ? (required for MD5 -P modes)
 
     ? Modules for optional features
@@ -68,9 +69,10 @@ The following steps are geared toward a Windows installation of
 Perl and the use of CRAPPS on Windows.  However, CRAPPS is written 
 in Perl and thus is platform independent.  You can run it on any OS 
 that supports Perl and has the required modules.  It has been tested 
-successfully on Windows (2K, XP, 2K3, 7) 32-bit and 64-bit with 
-Strawberry versions 5.14 to 5.20 32-bit and 64-bit, Linux (various 
-flavors) and Mac OSX.
+successfully on Windows 2000 and greater (e.g., XP, 2K3/8/12 Server,
+7, 10) 32-bit and 64-bit with Strawberry Perl versions 5.14 and 
+newer (up to latest) 32-bit and 64-bit, Linux (various flavors) 
+and Mac OSX.
 
   1)  Install Perl
   2)  Install Perl Modules (if required)
@@ -82,10 +84,9 @@ flavors) and Mac OSX.
 
 You'll need Perl.  If you already have it, skip to step 2.
 
-Some options for Perl on Windows are:
+Perl on Windows:
 
-    Strawberry
-    Activestate
+    Strawberry (http://strawberryperl.com/)
 
 Grab the latest version.  Install with all the default options.  Once 
 installed, you may find it useful to add the ".PL" extension to your 
@@ -116,11 +117,11 @@ This can be done by (example on Windows):
 
   9)  Check your work by Start -> Run "cmd.exe".  Type the command:
 
-           set | find "PATHEXT"
+           set PATHEXT
 
       output should be something like:
 
-        {C} > set | find "PATHEXT"
+        C:\> set PATHEXT
         PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.PL
 
       Note the ;.PL added at the end.
@@ -138,22 +139,22 @@ quotes) and the value should be your proxy server.  For example:
 
       http://myproxy.mycompany.com:8080
 
-a) If you're using Strawberry, use the 'cpan' client once you can 
-access the Internet.  You can simply install the required modules by:
+a) Use the 'cpan' client once you can access the Internet.  
+You can simply install the required modules by:
 
       cpan <module>
 
 For CRAPPS, you will (most likely only - in addition to the default 
 Perl install) need:
 
-      cpan Net-Telnet
       cpan Net-Telnet-Cisco
-      cpan Net-SNMP
       cpan Cisco-SNMP
+      cpan Crypt::Cisco
 
+Those commands will install those modules as well as their 
+dependencies:  Net::Telnet and Net::SNMP respectively.
 For optional features and full functionality, you will also need:
 
-      cpan Crypt-PasswdMD5
       cpan Net::SSH2::Cisco
       cpan Crypt::PasswdMD5
 
@@ -179,7 +180,7 @@ at the cmd.exe prompt.
 
 If you get something like:
 
-  {C} > crapps
+  C:\> crapps
   Can't locate Net/Telnet/Cisco.pm in @INC (@INC contains: C:/Perl/lib 
   C:/Perl/site/lib .) at C:\crapps.pl line 41.
   BEGIN failed--compilation aborted at C:\crapps.pl line 41.
@@ -190,17 +191,16 @@ correctly in step 2 above?
 
 If you get the following output, you're good to go!
 
-  {C} > crapps
-  C:\usr\bin\crapps.pl: host required
+  C:\> crapps
+  crapps.pl: host required
 
   Usage:
-       crapps [options] [SNMP options] | [Telnet options] host ...
-       crapps -P encrypt
-       crapps -S svc
+       crapps -P password [options]
+       crapps [[SNMP options] | [Telnet options]] [options] host ...
 
 To get the 411, use:
 
-  {C} > crapps --man
+  C:\> crapps --man
 
 
 4)  Additional Uses

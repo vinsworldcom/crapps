@@ -37,7 +37,8 @@ DEPENDENCIES
     Getopt::Long
     Pod::Usage
     Sys::Hostname
-    IO::Socket           (requires version >1.94 for IPv6 support)
+    Socket             (requires version >1.94 for IPv6 support)
+    IO::Socket::IP     (Perl's > 5.16, otherwise IO::Socket::INET)
     Net::Ping
     Digest::MD5        ? (required by Crypt::PasswdMD5)
     Term::ReadKey      ? (required for password masking)

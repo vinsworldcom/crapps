@@ -112,7 +112,7 @@ GetOptions(
     's|snmp|salt=s'          => \$opt{snmp},
     'S|ssh!'                 => \$opt{ssh},
     't|tftp:s'               => \$opt{tftp},
-    'T|terminal+'            => \$opt{term},
+    'T|type|terminal+'       => \$opt{term},
     'username=s'             => \$opt{user},
     'w|write+'               => \$opt{write},
     'W|wait=i'               => \$opt{Wait},
@@ -152,23 +152,23 @@ if ( defined $opt_versions ) {
       "    Net::Telnet::Cisco  $Net::Telnet::Cisco::VERSION\n";
 
     if ($HAVE_Net_SSH2_Cisco) {
-print "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n";
+        print "    Net::SSH2::Cisco    $Net::SSH2::Cisco::VERSION\n";
     } else {
-print "    Net::SSH2::Cisco    [NOT INSTALLED]\n";
+        print "    Net::SSH2::Cisco    [NOT INSTALLED]\n";
     }
 
     if ($HAVE_Crypt_PasswdMD5) {
-print "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n";
+        print "    Crypt::PasswdMD5    $Crypt::PasswdMD5::VERSION\n";
     } else {
-print "    Crypt::PasswdMD5    [NOT INSTALLED]\n";
+        print "    Crypt::PasswdMD5    [NOT INSTALLED]\n";
     }
 
-print "    Crypt::Cisco        $Crypt::Cisco::VERSION\n";
+    print "    Crypt::Cisco        $Crypt::Cisco::VERSION\n";
 
     if ($HAVE_Term_ReadKey) {
-print "    Term::ReadKey       $Term::ReadKey::VERSION\n";
+        print "    Term::ReadKey       $Term::ReadKey::VERSION\n";
     } else {
-print "    Term::ReadKey       [NOT INSTALLED]\n";
+        print "    Term::ReadKey       [NOT INSTALLED]\n";
     }
 ##################################################
     # End Additional USE
@@ -624,9 +624,10 @@ sub getCMSession {
 
     my %params = (
         hostname => $h->{addr},
-        family   => $h->{family},
+        family   => $h->{family}
     );
-    $params{port} = $h->{port} if ( defined $h->{port} );
+    $params{port}    = $h->{port} if ( defined $h->{port} );
+    $params{version} = 2          if ( defined $opt{term} );
 
     if ( defined $opt{user} ) {
 
@@ -680,21 +681,26 @@ sub SNMP_Config {
     } else {
         if ( defined $opt{command} ) {
             $conf = _config_copy(
-                $session, $host->{host}, 
-                sprintf( "tftp://%s/$file > %s/$opt{metric} ",
-                  $opt{tftp}->{addr},
-                  $host->{host} 
-                ), 
-                $file, $opt{metric}
+                $session,
+                $host->{host},
+                sprintf(
+                    "tftp://%s/$file > %s/$opt{metric} ",
+                    $opt{tftp}->{addr},
+                    $host->{host}
+                ),
+                $file,
+                $opt{metric}
             );
         } else {
             $conf = _config_copy(
-                $session, $host->{host}, 
-                sprintf( "%s/$opt{metric} > tftp://%s/$file ",
-                  $host->{host}, 
-                  $opt{tftp}->{addr}
+                $session,
+                $host->{host},
+                sprintf(
+                    "%s/$opt{metric} > tftp://%s/$file ",
+                    $host->{host}, $opt{tftp}->{addr}
                 ),
-                $opt{metric}, $file
+                $opt{metric},
+                $file
             );
         }
     }
@@ -1529,12 +1535,9 @@ sub _printRr {
     # Print replay/repeat numbers if we're looping
     if ( ( $opt{repeat} != 1 ) or ( $opt{replay} != 1 ) ) {
         printf "[%s%s] ",
-          ( !$stopReplay and ( $opt{replay} != 1 ) )
-          ? "R" . ( $i + 1 )
-          : "",
-          ( !$stopRepeat and ( $opt{repeat} != 1 ) )
-          ? "r" . ( $j + 1 )
-          : "";
+            ( !$stopReplay and ( $opt{replay} != 1 ) ) ? "R" . ( $i + 1 )
+          : "", ( !$stopRepeat and ( $opt{repeat} != 1 ) ) ? "r" . ( $j + 1 )
+          :                                                  "";
     }
 }
 
@@ -1549,7 +1552,7 @@ sub TELNET_Mode {
 
         # assume Telnet, SSH2 if -S
         my $transport = 'Telnet';
-           $transport = 'SSH2' if ( defined $opt{ssh} );
+        $transport = 'SSH2' if ( defined $opt{ssh} );
 
         # Make sure port is assigned
         if ( not defined $host->[$h]->{port} ) {
@@ -1688,7 +1691,7 @@ sub TELNET_Mode {
         # turn off paging by default for CatOS or IOS
         if ( defined $sessions{$host->[$h]->{host}} ) {
             my $pager = 'terminal length 0';
-               $pager = 'set length 0' if ( $opt{Catos} );
+            $pager = 'set length 0' if ( $opt{Catos} );
             $result = $sessions{$host->[$h]->{host}}->cmd($pager);
         }
     }
@@ -2331,6 +2334,9 @@ To activate B<SNMP Mode>, use the -s option.
 
  -e privpass          SNMP v3 privacy / encryption password.
  --encrypt            Implies authPriv mode.
+
+ -T                   Use SNMP version 2c.
+ --type               DEFAULT:  (or not specified) version 1.
 
  -t [IP_Addr]         SNMP get/put config via TFTP.
  --tftp               DEFAULT:  localhost.

@@ -1,6 +1,13 @@
 CRAPPS - Cisco Router Action Performing Perl Script
 Author:  Michael J. Vincent
 
+Version 3.3 - 19 JUL 2018
+
+Added -T option for SNMP v2c.
+Included ifHighSpeed check in -i utilization.
+Perl::Tidy code and small template updates.
+
+
 Version 3.2 - 13 DEC 2017
 
 Changed -f to flag instead of defined.

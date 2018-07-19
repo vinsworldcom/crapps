@@ -2,14 +2,14 @@
 ##################################################
 # AUTHOR = Michael Vincent
 # www.VinsWorld.com
+# 2:11 PM Thursday, July 19, 2018
 ##################################################
-
-use vars qw($VERSION);
-
-$VERSION = "3.2 - 13 DEC 2017";
 
 use strict;
 use warnings;
+
+my $VERSION = "3.3";
+
 use Getopt::Long qw(:config no_ignore_case);    #bundling
 use Pod::Usage;
 
@@ -1197,6 +1197,15 @@ sub SNMP_IntfUtil {
         return $FAILED . " (" . Cisco::SNMP->error . ")";
     }
     my $ifSpeed = $response->ifSpeed( $opt{interface} );
+    if ( $ifSpeed == 4294967295 ) {
+        $ifSpeed = Cisco::SNMP::_snmpwalk( $session->session,
+            '.1.3.6.1.2.1.31.1.1.1.15.' . $opt{interface} );
+        if ( $ifSpeed->[0] =~ /^\d+$/ ) {
+            $ifSpeed = $ifSpeed->[0] * 1000000;
+        } else {
+            return $FAILED . " (Cannot determine ifSpeed)";
+        }
+    }
 
     # outfile if requested
     my $OUT;
@@ -2809,7 +2818,7 @@ If you don't know what that means visit L<http://perl.com/>.
 
 =head1 AUTHOR
 
-Copyright (C) Michael Vincent 2008-2015
+Copyright (c) 2008-2018 Michael Vincent 
 
 L<http://www.VinsWorld.com>
 
